@@ -1,0 +1,15 @@
+{
+  "name": "vellum-extension",
+  "version": "2.0.0",
+  "description": "Chrome MV3 extension that detects invisible Unicode watermarks in web page text.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p . --outDir dist && cp manifest.json dist/ && cp -r popup/popup.html popup/popup.css icons dist/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0",
+    "@types/chrome": "^0.0.270"
+  }
+}
