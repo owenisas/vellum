@@ -1,7 +1,10 @@
 import base64
+import hashlib
 import json
 
 import pytest
+from eth_account import Account
+from eth_account.messages import encode_typed_data
 
 from veritext.chain.borsh_schema import decode_memo
 from veritext.chain.solana import SolanaChain
@@ -11,6 +14,40 @@ from veritext.config.settings import get_settings
 DATA_HASH = "ab" * 32
 SIGNATURE_HEX = "cd" * 65
 SOLANA_SIGNATURE = "5xLocalSolanaSignature111111111111111111111111111111111"
+
+
+def _sign_anchor(text: str, issuer_id: int, private_key, timestamp: int, bundle_nonce: str):
+    text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    typed = {
+        "types": {
+            "EIP712Domain": [
+                {"name": "name", "type": "string"},
+                {"name": "version", "type": "string"},
+                {"name": "chainId", "type": "uint256"},
+                {"name": "verifyingContract", "type": "address"},
+            ],
+            "VeritextAnchor": [
+                {"name": "textHash", "type": "bytes32"},
+                {"name": "issuerId", "type": "uint256"},
+                {"name": "timestamp", "type": "uint256"},
+                {"name": "bundleNonce", "type": "bytes32"},
+            ],
+        },
+        "primaryType": "VeritextAnchor",
+        "domain": {
+            "name": "Veritext",
+            "version": "2",
+            "chainId": 1,
+            "verifyingContract": "0x0000000000000000000000000000000000000000",
+        },
+        "message": {
+            "textHash": bytes.fromhex(text_hash),
+            "issuerId": issuer_id,
+            "timestamp": timestamp,
+            "bundleNonce": bytes.fromhex(bundle_nonce),
+        },
+    }
+    return Account.sign_message(encode_typed_data(full_message=typed), private_key=private_key)
 
 
 @pytest.mark.asyncio
@@ -127,3 +164,54 @@ async def test_solana_block_list_exposes_signatures(solana_app_client, monkeypat
     assert block["tx_hash"] == receipt.tx_hash
     assert block["data_hash"] == DATA_HASH
     assert block["solana_tx_signature"] == SOLANA_SIGNATURE
+
+
+@pytest.mark.asyncio
+async def test_proof_bundle_solana_anchor_metadata(solana_app_client, monkeypatch):
+    client, app = solana_app_client
+    issuer_id = 42
+    text = "locally anchored Solana proof bundle"
+    timestamp = 1_700_000_000
+    bundle_nonce = "00" * 32
+    acct = Account.create()
+
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    company_resp = await client.post(
+        "/api/companies",
+        json={
+            "name": "Solana Co",
+            "issuer_id": issuer_id,
+            "eth_address": acct.address,
+            "public_key_hex": acct.address,
+            "admin_secret": app.state.settings.registry_admin_secret,
+        },
+    )
+    assert company_resp.status_code == 200, company_resp.text
+    signed = _sign_anchor(text, issuer_id, acct.key, timestamp, bundle_nonce)
+
+    anchor_resp = await client.post(
+        "/api/anchor",
+        json={
+            "text": text,
+            "issuer_id": issuer_id,
+            "signature_hex": signed.signature.hex(),
+            "sig_scheme": "eip712",
+            "timestamp": timestamp,
+            "bundle_nonce_hex": bundle_nonce,
+        },
+    )
+
+    assert anchor_resp.status_code == 200, anchor_resp.text
+    body = anchor_resp.json()
+    anchor = body["proof_bundle_v2"]["anchors"][0]
+    assert body["chain_receipt"]["tx_hash"] != SOLANA_SIGNATURE
+    assert body["chain_receipt"]["solana_tx_signature"] == SOLANA_SIGNATURE
+    assert anchor["type"] == "solana_per_response"
+    assert anchor["memo_encoding"] == "borsh"
+    assert anchor["tx_hash"] == SOLANA_SIGNATURE
+    assert body["proof_bundle_v2"]["verification_hints"]["explorer_url"] == (
+        f"https://explorer.solana.com/tx/{SOLANA_SIGNATURE}?cluster=devnet"
+    )
