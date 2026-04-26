@@ -35,13 +35,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate deployment inputs
-        run: |
-          if [ -z "${DO_APP_ID}" ] && [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]; then
-            echo "Set repository variable DIGITALOCEAN_APP_ID before enabling push deploys."
-            exit 1
-          fi
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
