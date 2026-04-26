@@ -12,7 +12,6 @@ export function useEcdsa(privateKeyHex: string | null) {
             privateKeyHex.startsWith("0x") ? privateKeyHex : `0x${privateKeyHex}`,
           );
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("invalid private key", e);
           return null;
         }

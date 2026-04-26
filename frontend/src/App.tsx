@@ -1,54 +1,38 @@
-import { BrowserRouter, Route, Routes } from "react-router";
-import { AppShell } from "./layout/AppShell";
-import { Landing } from "./pages/Landing";
-import { Dashboard } from "./pages/Dashboard";
-import { GenerateAndAnchor } from "./pages/GenerateAndAnchor";
-import { Verify } from "./pages/Verify";
-import { Companies } from "./pages/Companies";
-import { Chain } from "./pages/Chain";
-import { GuidedDemo } from "./pages/GuidedDemo";
-import { DemoOverview } from "./pages/DemoOverview";
-import { AuthGuard } from "./auth/AuthGuard";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 
-export function App() {
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { AppShell } from "./layout/AppShell";
+import { Cover } from "./pages/Cover";
+import { Studio } from "./pages/Studio";
+import { Ledger } from "./pages/Ledger";
+import { Principles } from "./pages/Principles";
+
+export default function App() {
+  const location = useLocation();
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<Landing />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route
-              path="generate"
-              element={
-                <AuthGuard>
-                  <GenerateAndAnchor />
-                </AuthGuard>
-              }
-            />
-            <Route path="verify" element={<Verify />} />
-            <Route
-              path="companies"
-              element={
-                <AuthGuard>
-                  <Companies />
-                </AuthGuard>
-              }
-            />
-            <Route path="chain" element={<Chain />} />
-            <Route
-              path="demo"
-              element={
-                <AuthGuard>
-                  <GuidedDemo />
-                </AuthGuard>
-              }
-            />
-            <Route path="about" element={<DemoOverview />} />
-          </Route>
-        </Routes>
-      </ErrorBoundary>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <AppShell>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<Cover />} />
+            <Route path="/studio" element={<Studio />} />
+            <Route path="/ledger" element={<Ledger />} />
+            <Route path="/principles" element={<Principles />} />
+
+            {/* Legacy redirects */}
+            <Route path="/demo" element={<Navigate replace to="/studio" />} />
+            <Route path="/generate" element={<Navigate replace to="/studio?stage=write" />} />
+            <Route path="/verify" element={<Navigate replace to="/studio?stage=prove" />} />
+            <Route path="/companies" element={<Navigate replace to="/ledger?tab=issuers" />} />
+            <Route path="/chain" element={<Navigate replace to="/ledger" />} />
+            <Route path="/dashboard" element={<Navigate replace to="/ledger" />} />
+            <Route path="/about" element={<Navigate replace to="/principles" />} />
+
+            <Route path="*" element={<Navigate replace to="/" />} />
+          </Routes>
+        </AnimatePresence>
+      </AppShell>
+    </ErrorBoundary>
   );
 }

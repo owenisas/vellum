@@ -63,6 +63,12 @@ Registry.
 See [`docs/digitalocean-deploy.md`](docs/digitalocean-deploy.md) for required GitHub secrets and
 variables.
 
+## Feature Notes
+
+See [`docs/features.md`](docs/features.md) for the redesigned Studio/Ledger UI,
+Auth0 agent action flow, browser wallet proof model, DigitalOcean deployment
+status, and Solana readiness notes.
+
 ## License
 
 MIT

@@ -1,0 +1,85 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--hairline);
+}
+.inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: var(--s-3) var(--gutter);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-5);
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-decoration: none;
+  color: var(--fg);
+}
+.brandMark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  font-variation-settings: "opsz" 144;
+}
+.brandIssue {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  color: var(--fg-mute);
+}
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: var(--s-6);
+}
+.link {
+  font-family: var(--font-sans);
+  font-size: var(--t-12);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  transition: color var(--t-fast) var(--ease);
+}
+.link:hover, .active { color: var(--fg); }
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  justify-content: flex-end;
+}
+.tickerWrap { display: inline-flex; }
+.auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg);
+  background: transparent;
+  cursor: none;
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+@media (hover: none) { .auth { cursor: pointer; } }
+.auth:hover { border-color: var(--signal); color: var(--signal); }
+.authDot { width: 6px; height: 6px; border-radius: 50%; background: var(--signal); }
+
+@media (max-width: 1080px) { .brandIssue { display: none; } }
+@media (max-width: 880px) {
+  .inner { grid-template-columns: 1fr auto; padding: var(--s-3) var(--gutter); gap: var(--s-3); }
+  .nav { display: none; }
+  .tickerWrap { display: none; }
+}

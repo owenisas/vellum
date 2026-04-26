@@ -1,0 +1,68 @@
+.shell {
+  padding-top: var(--s-7);
+  padding-bottom: var(--s-9);
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  margin-bottom: var(--s-9);
+  padding-bottom: var(--s-9);
+  border-bottom: 1px solid var(--hairline);
+}
+.lede {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  color: var(--fg);
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  max-width: 60ch;
+  line-height: 1.45;
+  margin-top: var(--s-3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--s-9);
+}
+.left { display: flex; flex-direction: column; gap: var(--s-5); }
+.right { display: flex; flex-direction: column; gap: var(--s-9); }
+
+.tableHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.tableLabel {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.tableMeta {
+  font-family: var(--font-mono);
+  font-size: var(--t-12);
+  color: var(--fg-mute);
+}
+.more { padding-top: var(--s-4); display: flex; }
+
+.lattice { display: flex; flex-direction: column; gap: var(--s-3); }
+.latticeCap {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.latticeNote {
+  font-family: var(--font-sans);
+  font-size: var(--t-12);
+  color: var(--fg-mute);
+  max-width: 36ch;
+}
+
+@media (max-width: 1080px) {
+  .grid { grid-template-columns: 1fr; gap: var(--s-7); }
+}

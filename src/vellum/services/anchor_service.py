@@ -8,6 +8,7 @@ from watermark import Watermarker
 
 from vellum.auth.ecdsa import hash_text
 from vellum.auth.jwt import Identity
+from vellum.auth.wallets import WalletProof, verify_wallet_proof
 from vellum.chain.protocol import ChainBackend
 from vellum.db.repositories import ChainBlockRepository, CompanyRepository, ResponseRepository
 from vellum.models.chain import ChainReceiptModel
@@ -69,6 +70,29 @@ class AnchorService:
             "model": (metadata or {}).get("model"),
         }
 
+    async def _verified_wallet_proofs(
+        self,
+        proofs: list[WalletProof],
+        *,
+        data_hash: str,
+    ) -> list[dict]:
+        verified: list[dict] = []
+        for proof in proofs:
+            on_chain = None
+            if proof.wallet_type == "solana" and proof.tx_signature:
+                verifier = getattr(self.chain, "verify_on_chain", None)
+                if callable(verifier):
+                    on_chain = await verifier(proof.tx_signature)
+                    if on_chain and on_chain.get("verified") is False:
+                        raise ValueError(
+                            f"Solana wallet transaction could not be verified: {on_chain.get('reason')}"
+                        )
+
+            verified.append(
+                verify_wallet_proof(proof, data_hash=data_hash, on_chain=on_chain).to_dict()
+            )
+        return verified
+
     async def anchor(self, req: AnchorRequest, identity: Identity | None = None) -> AnchorResponse:
         data_hash = hash_text(req.text)
 
@@ -77,6 +101,12 @@ class AnchorService:
         agent_action = self._agent_action(identity, metadata)
         if agent_action is not None:
             metadata["agent_action"] = agent_action
+        wallet_proofs = await self._verified_wallet_proofs(
+            req.wallet_proofs,
+            data_hash=data_hash,
+        )
+        if wallet_proofs:
+            metadata["wallet_proofs"] = wallet_proofs
 
         await self.response_repo.save(
             sha256_hash=data_hash,
@@ -102,6 +132,7 @@ class AnchorService:
             watermark=watermark_result,
             signature_hex=req.signature_hex,
             agent_action=agent_action,
+            wallet_proofs=wallet_proofs,
         )
 
         return AnchorResponse(
@@ -139,6 +170,7 @@ class AnchorService:
             solana_tx_signature=record.solana_tx_signature,
         )
         agent_action = record.payload.get("agent_action")
+        wallet_proofs = record.payload.get("wallet_proofs", [])
 
         bundle = self.proof_builder.build(
             receipt=receipt_obj,
@@ -146,6 +178,7 @@ class AnchorService:
             watermark=Watermarker().detect(text),
             signature_hex=record.signature_hex,
             agent_action=agent_action,
+            wallet_proofs=wallet_proofs,
         )
 
         return VerifyResponse(
@@ -188,6 +221,7 @@ class AnchorService:
 
         empty = DetectResult(False, 0, 0, 0, [])
         agent_action = record.payload.get("agent_action")
+        wallet_proofs = record.payload.get("wallet_proofs", [])
 
         bundle = self.proof_builder.build(
             receipt=receipt,
@@ -195,6 +229,7 @@ class AnchorService:
             watermark=empty,
             signature_hex=record.signature_hex,
             agent_action=agent_action,
+            wallet_proofs=wallet_proofs,
         )
         return ProofResponse(found=True, proof_bundle_v2=ProofBundleV2(**bundle))
 

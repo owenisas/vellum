@@ -37,6 +37,7 @@ class ProofBundleBuilder:
         watermark: DetectResult,
         signature_hex: str,
         agent_action: dict | None = None,
+        wallet_proofs: list[dict] | None = None,
     ) -> dict:
         """Construct a Proof Bundle v2 dict (pre-`bundle_id`)."""
         text_hash = receipt.data_hash
@@ -117,6 +118,7 @@ class ProofBundleBuilder:
                 "public_key_hex": company.get("public_key_hex", ""),
             },
             "agent_action": agent_action,
+            "wallet_proofs": wallet_proofs or [],
             "signature": {
                 "scheme": "eip191_personal_sign",
                 "signed_payload": f"sha256:{text_hash}",

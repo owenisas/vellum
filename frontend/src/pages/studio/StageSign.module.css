@@ -1,0 +1,114 @@
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-7);
+  margin-bottom: var(--s-7);
+}
+.colHash, .colIdentity { display: flex; flex-direction: column; gap: var(--s-4); }
+
+.note {
+  font-family: var(--font-sans);
+  font-size: var(--t-12);
+  color: var(--fg-mute);
+  max-width: 40ch;
+}
+
+.idLabel {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.idName {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-37);
+  font-variation-settings: "opsz" 144;
+  line-height: 1;
+  color: var(--fg);
+  margin-bottom: var(--s-2);
+}
+.idMeta {
+  font-family: var(--font-mono);
+  font-size: var(--t-12);
+  color: var(--fg-mute);
+  margin-top: var(--s-2);
+}
+
+.signerPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+  padding: var(--s-5);
+  margin-bottom: var(--s-6);
+  background: var(--bg-2);
+  border: 1px solid var(--hairline);
+}
+.signerPanel label,
+.proofs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.signerPanel select,
+.signerPanel input {
+  width: 100%;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--hairline-strong);
+  padding: 0.75rem 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-12);
+}
+.proofs label {
+  font-family: var(--font-sans);
+  font-size: var(--t-14);
+  color: var(--fg);
+}
+.proofs input[type="checkbox"] {
+  width: auto;
+}
+
+.actions {
+  display: flex;
+  gap: var(--s-4);
+  align-items: center;
+  margin-bottom: var(--s-6);
+  flex-wrap: wrap;
+}
+
+.sigOut {
+  background: var(--bg-2);
+  border-left: 2px solid var(--signal);
+  padding: var(--s-5) var(--s-6);
+}
+.sigLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: var(--s-4);
+}
+.sigGroups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-12);
+}
+.sigGroup {
+  display: inline-block;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+
+@media (max-width: 720px) {
+  .cols { grid-template-columns: 1fr; gap: var(--s-6); }
+  .signerPanel { grid-template-columns: 1fr; }
+}

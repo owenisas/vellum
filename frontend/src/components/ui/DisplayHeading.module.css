@@ -1,0 +1,18 @@
+.h {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  margin: 0;
+}
+.h.left { text-align: left; }
+.h.center { text-align: center; }
+.line { display: block; overflow: hidden; }
+.wordWrap { display: inline-block; overflow: hidden; vertical-align: bottom; }
+.word { display: inline-block; will-change: transform; }
+.italic {
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  color: var(--signal);
+}

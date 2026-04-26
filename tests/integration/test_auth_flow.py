@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from eth_account import Account
+from eth_account.messages import encode_defunct
+
 from tests.conftest import sign_text
+from vellum.auth.wallets import build_wallet_message
 
 
 async def test_demo_identity_grants_chat(client):
@@ -78,6 +82,86 @@ async def test_anchor_proof_includes_auth0_agent_action(client, make_company):
         verify.json()["proof_bundle_v2"]["agent_action"]["subject"]
         == "demo|anonymous"
     )
+
+
+async def test_anchor_proof_includes_verified_wallet_proof(client, make_company):
+    company = await make_company("Wallet Proof Co")
+
+    chat = await client.post(
+        "/api/chat",
+        json={"messages": [{"role": "user", "content": "wallet proof"}]},
+    )
+    text = chat.json()["text"]
+    data_hash, sig = sign_text(text, company["private_key_hex"])
+    wallet_message = build_wallet_message(data_hash, "evm", company["eth_address"])
+    wallet_sig = Account.sign_message(
+        encode_defunct(text=wallet_message),
+        private_key=company["private_key_hex"],
+    ).signature.hex()
+
+    resp = await client.post(
+        "/api/anchor",
+        json={
+            "text": text,
+            "raw_text": text,
+            "signature_hex": sig,
+            "issuer_id": company["issuer_id"],
+            "wallet_proofs": [
+                {
+                    "wallet_type": "evm",
+                    "address": company["eth_address"],
+                    "message": wallet_message,
+                    "signature": wallet_sig,
+                    "signature_encoding": "hex",
+                    "chain_id": "31337",
+                }
+            ],
+        },
+    )
+
+    assert resp.status_code == 200, resp.text
+    wallet_proofs = resp.json()["proof_bundle_v2"]["wallet_proofs"]
+    assert wallet_proofs[0]["wallet_type"] == "evm"
+    assert wallet_proofs[0]["address"].lower() == company["eth_address"].lower()
+    assert wallet_proofs[0]["chain_id"] == "31337"
+
+    verify = await client.post("/api/verify", json={"text": text})
+    assert verify.status_code == 200, verify.text
+    assert verify.json()["proof_bundle_v2"]["wallet_proofs"][0]["wallet_type"] == "evm"
+
+
+async def test_anchor_rejects_invalid_wallet_proof(client, make_company):
+    company = await make_company("Bad Wallet Proof Co")
+
+    chat = await client.post(
+        "/api/chat",
+        json={"messages": [{"role": "user", "content": "bad wallet proof"}]},
+    )
+    text = chat.json()["text"]
+    data_hash, sig = sign_text(text, company["private_key_hex"])
+    wallet_message = build_wallet_message(data_hash, "evm", company["eth_address"])
+
+    resp = await client.post(
+        "/api/anchor",
+        json={
+            "text": text,
+            "raw_text": text,
+            "signature_hex": sig,
+            "issuer_id": company["issuer_id"],
+            "wallet_proofs": [
+                {
+                    "wallet_type": "evm",
+                    "address": company["eth_address"],
+                    "message": wallet_message,
+                    "signature": "0x" + "00" * 65,
+                    "signature_encoding": "hex",
+                }
+            ],
+        },
+    )
+
+    assert resp.status_code == 400, resp.text
+    assert "wallet proof" in resp.json()["detail"].lower()
 
 
 async def test_demo_mode_allows_companies_get_without_auth(client, make_company):

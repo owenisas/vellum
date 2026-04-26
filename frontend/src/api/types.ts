@@ -144,10 +144,22 @@ export interface ProofBundleV2 {
   hashing: Record<string, unknown>;
   issuer: Record<string, unknown>;
   agent_action?: Record<string, unknown> | null;
+  wallet_proofs?: Array<Record<string, unknown>>;
   signature: Record<string, unknown>;
   watermark: Record<string, unknown>;
   anchors: Array<Record<string, unknown>>;
   verification_hints: Record<string, unknown>;
+}
+
+export interface WalletProof {
+  wallet_type: "evm" | "solana";
+  address: string;
+  message: string;
+  signature: string;
+  signature_encoding?: "base64" | "hex" | "base58";
+  chain_id?: string | null;
+  cluster?: string | null;
+  tx_signature?: string | null;
 }
 
 export interface AnchorResponse {

@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from vellum.auth.wallets import WalletProof
+
 from .chain import ChainReceiptModel
 from .chat import WatermarkInfo, WmParams
 
@@ -29,6 +31,7 @@ class AnchorRequest(BaseModel):
     signature_hex: str
     issuer_id: int
     metadata: dict[str, Any] = Field(default_factory=dict)
+    wallet_proofs: list[WalletProof] = Field(default_factory=list)
     wm_params: WmParams | None = None
 
 
@@ -38,6 +41,7 @@ class ProofBundleV2(BaseModel):
     hashing: dict[str, Any]
     issuer: dict[str, Any]
     agent_action: dict[str, Any] | None = None
+    wallet_proofs: list[dict[str, Any]] = Field(default_factory=list)
     signature: dict[str, Any]
     watermark: dict[str, Any]
     anchors: list[dict[str, Any]] = Field(default_factory=list)

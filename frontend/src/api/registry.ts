@@ -4,6 +4,7 @@ import type {
   HealthResponse,
   ProofBundleV2,
   VerifyResponse,
+  WalletProof,
   WmParams,
 } from "./types";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ export const registryApi = {
     signature_hex: string;
     issuer_id: number;
     metadata?: Record<string, unknown>;
+    wallet_proofs?: WalletProof[];
     wm_params?: WmParams;
   }) => post<AnchorResponse>("/api/anchor", req),
   verify: (text: string) => post<VerifyResponse>("/api/verify", { text }),

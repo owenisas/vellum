@@ -1,0 +1,55 @@
+.scene {
+  background: var(--bg-2);
+  border: 1px solid var(--hairline);
+  padding: var(--s-6);
+  margin-bottom: var(--s-6);
+  border-radius: 6px;
+}
+.actions {
+  display: flex;
+  gap: var(--s-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  background: var(--bg-2);
+  padding: var(--s-6);
+  border-left: 2px solid var(--signal);
+}
+.recLabel {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.recList {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.65rem var(--s-5);
+  margin: 0;
+}
+.recList dt {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  padding-top: 0.1rem;
+}
+.recList dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-14);
+  color: var(--fg);
+}
+.accent { color: var(--signal); text-transform: uppercase; letter-spacing: 0.1em; }
+.recActions { display: flex; gap: var(--s-3); flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .recList { grid-template-columns: 1fr; gap: 0.3rem 0; }
+  .recList dt { padding-top: var(--s-2); }
+}

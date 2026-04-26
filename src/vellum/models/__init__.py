@@ -34,6 +34,7 @@ from .registry import (
     SolanaVerifyResponse,
     VerifyRequest,
     VerifyResponse,
+    WalletProof,
 )
 
 __all__ = [
@@ -67,6 +68,7 @@ __all__ = [
     "TextRequest",
     "VerifyRequest",
     "VerifyResponse",
+    "WalletProof",
     "WatermarkInfo",
     "WmParams",
 ]
