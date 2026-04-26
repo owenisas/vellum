@@ -10,13 +10,14 @@ import { MagneticButton } from "../../components/ui/MagneticButton";
 import { EditorialCaption } from "../../components/ui/EditorialCaption";
 import { MerkleTreeScene } from "../../components/scenes/MerkleTreeScene";
 import { ease } from "../../lib/motion";
-import { shortAddress } from "../../lib/hash";
+import { copy, shortAddress } from "../../lib/hash";
 import styles from "./Stage.module.css";
 import anchorStyles from "./StageAnchor.module.css";
 
 export function StageAnchor({ flow }: { flow: StudioFlow }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const anchor = useAnchor();
   const evmWallet = useEvmWallet();
   const solanaWallet = useSolanaWallet();
@@ -64,6 +65,11 @@ export function StageAnchor({ flow }: { flow: StudioFlow }) {
     ?? (flow.bundle?.chain_receipt?.solana_tx_signature
       ? `https://explorer.solana.com/tx/${flow.bundle.chain_receipt.solana_tx_signature}?cluster=devnet`
       : null);
+  const onCopySignedText = async () => {
+    const ok = await copy(flow.generatedText);
+    setCopyState(ok ? "copied" : "failed");
+    window.setTimeout(() => setCopyState("idle"), 1800);
+  };
 
   return (
     <div className={styles.stage}>
@@ -122,6 +128,9 @@ export function StageAnchor({ flow }: { flow: StudioFlow }) {
             )}
           </dl>
           <div className={anchorStyles.recActions}>
+            <MagneticButton onClick={onCopySignedText} variant="filled">
+              {copyState === "copied" ? "Copied signed text" : copyState === "failed" ? "Copy failed" : "Copy signed text"}
+            </MagneticButton>
             <MagneticButton onClick={() => flow.setStage("prove")} variant="filled">Prove it</MagneticButton>
             {explorerUrl && (
               <MagneticButton href={explorerUrl} variant="outline">View on Solana Explorer</MagneticButton>

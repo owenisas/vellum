@@ -90,6 +90,12 @@
   line-height: 1;
 }
 .publicBody { color: var(--fg-mute); max-width: 56ch; }
+.publicActions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
 
 .bundle {
   display: flex;

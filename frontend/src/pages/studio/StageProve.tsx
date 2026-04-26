@@ -7,6 +7,7 @@ import { MagneticButton } from "../../components/ui/MagneticButton";
 import { EditorialCaption } from "../../components/ui/EditorialCaption";
 import { Drawer } from "../../components/ui/Drawer";
 import { ease } from "../../lib/motion";
+import { copy } from "../../lib/hash";
 import styles from "./Stage.module.css";
 import proveStyles from "./StageProve.module.css";
 
@@ -17,6 +18,7 @@ export function StageProve({ flow }: { flow: StudioFlow }) {
   const [pasteText, setPasteText] = useState("");
   const [pasteResult, setPasteResult] = useState<typeof flow.verifyClean>(null);
   const [pasteBusy, setPasteBusy] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const onClean = async () => {
     setBusy("clean");
@@ -43,6 +45,11 @@ export function StageProve({ flow }: { flow: StudioFlow }) {
       const r = await verify.mutateAsync(pasteText);
       setPasteResult(r);
     } finally { setPasteBusy(false); }
+  };
+  const onCopySignedText = async () => {
+    const ok = await copy(flow.generatedText);
+    setCopyState(ok ? "copied" : "failed");
+    window.setTimeout(() => setCopyState("idle"), 1800);
   };
 
   return (
@@ -87,14 +94,18 @@ export function StageProve({ flow }: { flow: StudioFlow }) {
           <span className={proveStyles.publicCap}>OPEN UTILITY</span>
           <h3 className={proveStyles.publicHead}>Verify any paragraph, from anywhere.</h3>
           <p className={proveStyles.publicBody}>
-            Paste any text into the verifier — no account, no login. If a
-            Vellum signature is present and the registry recognizes it, you
-            see who signed it and when.
+            Copy the signed, watermarked paragraph, paste it into a social post
+            or mock page, then verify it here or with the Chrome extension.
           </p>
         </div>
-        <MagneticButton onClick={() => setDrawerOpen(true)} variant="outline">
-          Open the verifier
-        </MagneticButton>
+        <div className={proveStyles.publicActions}>
+          <MagneticButton onClick={onCopySignedText} variant="filled">
+            {copyState === "copied" ? "Copied signed text" : copyState === "failed" ? "Copy failed" : "Copy signed text"}
+          </MagneticButton>
+          <MagneticButton onClick={() => setDrawerOpen(true)} variant="outline">
+            Open the verifier
+          </MagneticButton>
+        </div>
       </div>
 
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="Public verifier" side="right">

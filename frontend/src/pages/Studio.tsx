@@ -93,6 +93,7 @@ export function Studio() {
   const [verifyClean, setVerifyClean] = useState<VerifyResponse | null>(null);
   const [verifyTampered, setVerifyTampered] = useState<VerifyResponse | null>(null);
   const [tamperedText, setTamperedText] = useState<string>("");
+  const [dockCopyState, setDockCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const flow: StudioFlow = useMemo(
     () => ({
@@ -184,6 +185,11 @@ export function Studio() {
     ?? (bundle?.chain_receipt?.solana_tx_signature
       ? `https://explorer.solana.com/tx/${bundle.chain_receipt.solana_tx_signature}?cluster=devnet`
       : null);
+  const onCopySignedText = async () => {
+    const ok = await copy(generatedText);
+    setDockCopyState(ok ? "copied" : "failed");
+    window.setTimeout(() => setDockCopyState("idle"), 1800);
+  };
 
   return (
     <motion.section
@@ -236,6 +242,9 @@ export function Studio() {
               </Button>
               <Button variant="ghost" size="sm" onClick={() => downloadText("text.txt", generatedText)}>
                 text.txt
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onCopySignedText}>
+                {dockCopyState === "copied" ? "copied text" : dockCopyState === "failed" ? "copy failed" : "copy signed text"}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => copy("vellum verify --bundle ./bundle.json --text ./text.txt")}>
                 copy CLI
