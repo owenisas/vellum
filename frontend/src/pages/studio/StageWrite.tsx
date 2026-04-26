@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 
 import type { StudioFlow } from "./StudioState";
@@ -45,6 +45,19 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
     ...(providerModels.google.length ? ["google" as const] : []),
     "fixture" as const,
   ];
+
+  useEffect(() => {
+    if (models.isLoading) return;
+    if (flow.provider === "google" && providerModels.google.length === 0) {
+      flow.setProvider("fixture");
+      flow.setModel("fixture");
+      return;
+    }
+    if (flow.provider === "google" && providerModels.google.length > 0) {
+      const currentExists = providerModels.google.some((m) => m.id === flow.model);
+      if (!currentExists) flow.setModel(providerModels.google[0].id);
+    }
+  }, [flow, models.isLoading, providerModels.google]);
 
   const onGenerate = async () => {
     setBusy(true);

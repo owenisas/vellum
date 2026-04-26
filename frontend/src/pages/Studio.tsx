@@ -74,7 +74,7 @@ export function Studio() {
   };
 
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
-  const [provider, setProvider] = useState<"google" | "fixture">("fixture");
+  const [provider, setProvider] = useState<"google" | "fixture">("google");
   const [model, setModel] = useState<string>("gemma-4-31b-it");
   const [generatedText, setGeneratedText] = useState<string>("");
   const [rawText, setRawText] = useState<string>("");
