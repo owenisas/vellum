@@ -81,3 +81,26 @@ async def test_solana_memo_payload_is_stored(local_solana_env, db_conn, monkeypa
     assert memo.issuer_id == 99
     assert memo.sig_prefix == bytes.fromhex(SIGNATURE_HEX)[:20]
     assert memo.merkle_root is None
+
+
+@pytest.mark.asyncio
+async def test_solana_status_api_uses_local_db_state(solana_app_client, monkeypatch):
+    client, app = solana_app_client
+
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    receipt = await app.state.chain.anchor(
+        data_hash=DATA_HASH,
+        issuer_id=42,
+        signature_hex=SIGNATURE_HEX,
+    )
+
+    resp = await client.get("/api/chain/status")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["chain_type"] == "solana"
+    assert body["block_count"] == 1
+    assert body["latest_tx_hash"] == receipt.tx_hash
