@@ -151,11 +151,12 @@ export function StageSign({ flow }: { flow: StudioFlow }) {
               type="text"
               value={flow.solanaTxSignature}
               onChange={(e) => flow.setSolanaTxSignature(e.target.value)}
-              placeholder="Optional Solana Memo tx signature"
+              placeholder="Optional existing Solana Memo tx signature"
             />
           )}
           <span className={sigStyles.idMeta}>
-            Wallet proofs show control of addresses. They do not grant backend access to funds.
+            Wallet proofs are message signatures only. They do not cost gas/SOL,
+            submit transactions, or grant backend access to funds.
           </span>
         </div>
       </div>
@@ -183,7 +184,7 @@ export function StageSign({ flow }: { flow: StudioFlow }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease }}
         >
-          <span className={sigStyles.sigLabel}>Signature (EIP-712)</span>
+          <span className={sigStyles.sigLabel}>Signature (EIP-191 personal_sign)</span>
           <div className={sigStyles.sigGroups}>
             {splitHash(flow.signature, 8).map((g, i) => (
               <motion.span

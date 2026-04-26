@@ -86,12 +86,12 @@ export function Principles() {
             an open standard, no proprietary magic.
           </p>
           <p>
-            <strong>A public ledger.</strong> The signed fingerprint is
-            anchored on Solana, a public blockchain. The record is permanent
-            and globally readable: no platform owns it, no government can
-            quietly rewrite it. To save costs, we batch many sentences into
-            one Merkle tree per minute — but each individual sentence can
-            still be proven part of that tree, on its own.
+            <strong>A verifiable registry.</strong> The signed fingerprint is
+            anchored into a tamper-evident registry. For the no-funds demo,
+            browser wallets sign messages rather than transactions, so users
+            prove wallet control without gas, SOL, or spend permissions. A
+            future on-chain mode can verify wallet-submitted Solana Memo
+            transactions without giving the backend custody of user funds.
           </p>
           <p>
             Three layers. If one is removed, the others still tell the

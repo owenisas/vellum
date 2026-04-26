@@ -20,6 +20,7 @@ dist/
 node_modules/
 frontend/dist/
 extension/dist/
+*.tsbuildinfo
 *.log
 
 # Local env

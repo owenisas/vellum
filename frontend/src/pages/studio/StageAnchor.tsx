@@ -70,11 +70,13 @@ export function StageAnchor({ flow }: { flow: StudioFlow }) {
       <header className={styles.head}>
         <EditorialCaption number="03" rule>ANCHOR</EditorialCaption>
         <h2 className={styles.title}>
-          Seal it onto a <em>public ledger</em>.
+          Seal it into a <em>verifiable registry</em>.
         </h2>
         <p className={styles.lede}>
           The signed paragraph joins a Merkle tree of recently sealed sentences.
-          Its root is broadcast to Solana — a public record no one can rewrite.
+          For this no-funds demo, browser wallet signatures prove wallet control
+          while the backend records a tamper-evident registry receipt without
+          requiring gas, SOL, or a server fee-payer wallet.
         </p>
       </header>
 
@@ -85,7 +87,7 @@ export function StageAnchor({ flow }: { flow: StudioFlow }) {
       {!sealed ? (
         <div className={anchorStyles.actions}>
           <MagneticButton onClick={onAnchor} disabled={busy || !flow.signature} variant="filled">
-            {busy ? "Sealing on Solana…" : "Anchor on chain"}
+            {busy ? "Sealing in registry..." : "Anchor without funds"}
           </MagneticButton>
           <MagneticButton onClick={() => flow.setStage("sign")} variant="outline" arrow={false}>
             Back

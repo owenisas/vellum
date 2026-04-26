@@ -22,6 +22,11 @@ The redesigned Studio flow exposes this in the Sign and Anchor stages: users
 choose a registered issuer, sign with either a local demo key or MetaMask, and
 optionally attach MetaMask/EVM and Phantom/Solana wallet-control proofs.
 
+The recommended hackathon demo mode is the no-funds path: wallet proofs are
+message signatures only, and the backend uses the simulated registry chain.
+No user wallet needs ETH/SOL, and the backend does not need a funded deployer
+wallet.
+
 The signed message is bound to the final SHA-256 text hash:
 
 ```text
@@ -36,7 +41,8 @@ The backend re-verifies each proof during `/api/anchor` and stores verified
 metadata in the response record, chain payload, and proof bundle.
 
 Private keys never leave the browser wallet. The backend only receives public
-addresses, messages, signatures, and optional transaction identifiers.
+addresses, messages, signatures, and optional transaction identifiers. A wallet
+proof does not submit a transaction or grant spend authority.
 
 ## EVM vs Solana Verification
 
@@ -84,13 +90,15 @@ Implemented:
 
 Current deployed status:
 
-- The live app has been observed running with `chain_backend: "simulated"`.
-- In simulated mode, Solana wallet signatures can prove wallet control, but the
-  app is not submitting live Solana Memo transactions.
+- The no-funds demo runs with `chain_backend: "simulated"`.
+- In simulated mode, Solana wallet signatures prove wallet control, but the app
+  does not submit live Solana Memo transactions.
+- This is intentional for demos that should not require user funds or backend
+  fee-payer funds.
 
-To claim the Solana sponsor track in a live demo, enable `CHAIN_BACKEND=solana`,
-install the Solana optional dependencies in the deployment image, provide a
-funded devnet keypair, and show a proof bundle with a real Solana explorer link.
+To claim a full on-chain Solana anchor later without backend funds, the next
+step is adding Phantom-submitted Memo transactions in the browser and having the
+backend verify the submitted transaction signature.
 
 ## Frontend Experience
 

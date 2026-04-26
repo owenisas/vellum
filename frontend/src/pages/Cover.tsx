@@ -19,7 +19,7 @@ const COVER_LINES = [
   {
     no: "02",
     head: "SIGN",
-    body: "A cryptographic seal anchors the words to a public ledger. No platform, no central record-keeper, no possible forgery.",
+    body: "Auth0 and browser-wallet signatures bind the words to accountable identities without exposing keys or requiring gas.",
   },
   {
     no: "03",
@@ -71,8 +71,9 @@ export function Cover() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease, delay: 1.1 }}
           >
-            Veritext signs and seals AI-written text on a public blockchain — so
-            authorship, time, and integrity stay readable for a thousand years.
+            Vellum signs and seals AI-written text with Auth0 identity,
+            browser-wallet proofs, and a tamper-evident registry, so authorship,
+            time, and integrity stay readable without asking anyone to fund a wallet.
           </motion.p>
           <motion.div
             className={styles.actions}
@@ -110,7 +111,7 @@ export function Cover() {
 
       <div className={`container ${styles.foot}`}>
         <span className={styles.footMono}>
-          ANCHORED ON SOLANA · OPEN-SOURCE · COMPLIANT WITH EU AI ACT, ARTICLE 50
+          NO-FUNDS WALLET PROOFS · OPEN-SOURCE · COMPLIANT WITH EU AI ACT, ARTICLE 50
         </span>
         <span className={styles.scrollHint} aria-hidden>↓ SCROLL</span>
       </div>

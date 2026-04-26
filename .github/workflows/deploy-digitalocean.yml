@@ -9,6 +9,29 @@ on:
         description: "Existing DigitalOcean App ID. Leave blank to create a new app."
         required: false
         type: string
+      create_new_app:
+        description: "Create a new DigitalOcean app instead of updating DIGITALOCEAN_APP_ID."
+        required: false
+        default: false
+        type: boolean
+      app_name:
+        description: "DigitalOcean App name."
+        required: false
+        default: "vellum"
+        type: string
+      auth0_domain:
+        description: "Auth0 domain for this deployment."
+        required: false
+        type: string
+      auth0_audience:
+        description: "Auth0 API audience."
+        required: false
+        default: "https://api.vellum.io"
+        type: string
+      auth0_spa_client_id:
+        description: "Auth0 SPA client ID."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -20,14 +43,15 @@ jobs:
     env:
       DO_BRANCH: ${{ github.ref_name }}
       DO_APP_ID: ${{ inputs.app_id || vars.DIGITALOCEAN_APP_ID }}
+      DO_APP_NAME: ${{ inputs.app_name || 'vellum' }}
       DIGITALOCEAN_REGISTRY_NAME: ${{ vars.DIGITALOCEAN_REGISTRY_NAME }}
       DEMO_MODE: ${{ vars.DEMO_MODE || 'live' }}
       CHAIN_BACKEND: ${{ vars.CHAIN_BACKEND || 'simulated' }}
       DEFAULT_PROVIDER: ${{ vars.DEFAULT_PROVIDER || 'google' }}
       DEFAULT_MODEL: ${{ vars.DEFAULT_MODEL || 'gemma-4-27b-it' }}
-      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
-      AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE || 'https://api.vellum.io' }}
-      AUTH0_SPA_CLIENT_ID: ${{ vars.AUTH0_SPA_CLIENT_ID }}
+      AUTH0_DOMAIN: ${{ inputs.auth0_domain || vars.AUTH0_DOMAIN }}
+      AUTH0_AUDIENCE: ${{ inputs.auth0_audience || vars.AUTH0_AUDIENCE || 'https://api.vellum.io' }}
+      AUTH0_SPA_CLIENT_ID: ${{ inputs.auth0_spa_client_id || vars.AUTH0_SPA_CLIENT_ID }}
       REGISTRY_ADMIN_SECRET: ${{ secrets.REGISTRY_ADMIN_SECRET || 'change-me-before-production' }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
@@ -98,6 +122,7 @@ jobs:
           import os
 
           replacements = {
+              "__APP_NAME__": os.environ.get("DO_APP_NAME", "vellum"),
               "__DO_REGISTRY_NAME__": os.environ["DO_REGISTRY_NAME"],
               "__IMAGE_TAG__": os.environ["IMAGE_TAG"],
               "__DEMO_MODE__": os.environ.get("DEMO_MODE", "live"),
@@ -120,7 +145,9 @@ jobs:
 
       - name: Deploy app
         run: |
-          if [ -n "${DO_APP_ID}" ]; then
+          if [ "${{ inputs.create_new_app }}" = "true" ]; then
+            doctl apps create --spec .do/app.generated.yaml --wait --format ID,DefaultIngress --no-header
+          elif [ -n "${DO_APP_ID}" ]; then
             doctl apps update "${DO_APP_ID}" --spec .do/app.generated.yaml --wait
           else
             doctl apps create --spec .do/app.generated.yaml --wait --format ID,DefaultIngress --no-header

@@ -1,4 +1,4 @@
-name: vellum
+name: "__APP_NAME__"
 region: nyc
 
 services:
