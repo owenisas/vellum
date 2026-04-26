@@ -1,41 +1,20 @@
-/**
- * Popup controller.
- *
- * Pulls cached scan state from the background service worker, renders the
- * detected watermark list, and wires up the "Scan this page" / "Open dashboard"
- * buttons.
- */
-
-interface ScanPayloadSummary {
-  schemaVersion: number;
-  issuerId: number;
-  modelId: number;
-  modelVersionId: number;
-  keyId: number;
-  crc: number;
-  crcValid: boolean;
-  rawPayloadHex: string;
-}
-
-interface ScanState {
-  count: number;
-  invalidCount: number;
-  payloads: ScanPayloadSummary[];
-  url: string;
-  updatedAt: number;
-}
+import {
+  DEFAULT_API_BASE_URL,
+  KNOWN_API_BASE_URLS,
+  normalizeApiBaseUrl,
+} from "../shared/api.js";
+import type {
+  CandidateText,
+  RuntimeMessage,
+  ScanResultMessage,
+  ScanState,
+  VerificationState,
+} from "../shared/messages.js";
+import { previewText } from "../shared/messages.js";
 
 interface GetStateResponse {
   tabId: number | undefined;
   state: ScanState | null;
-}
-
-interface ScanResultMessage {
-  type: "vellum:scan-result";
-  count: number;
-  invalidCount: number;
-  payloads: ScanPayloadSummary[];
-  url: string;
 }
 
 const $ = <T extends Element = HTMLElement>(sel: string): T | null =>
@@ -62,22 +41,61 @@ const fetchState = async (tabId: number): Promise<ScanState | null> => {
   }
 };
 
+const fetchSettings = async (): Promise<string> => {
+  try {
+    const resp = (await chrome.runtime.sendMessage({
+      type: "vellum:get-settings",
+    } satisfies RuntimeMessage)) as { apiBaseUrl?: string } | undefined;
+    return normalizeApiBaseUrl(resp?.apiBaseUrl);
+  } catch {
+    return DEFAULT_API_BASE_URL;
+  }
+};
+
+const saveApiBaseUrl = async (apiBaseUrl: string): Promise<string> => {
+  const resp = (await chrome.runtime.sendMessage({
+    type: "vellum:set-api-base-url",
+    apiBaseUrl,
+  } satisfies RuntimeMessage)) as { apiBaseUrl: string };
+  return normalizeApiBaseUrl(resp.apiBaseUrl);
+};
+
 const requestRescan = async (tabId: number): Promise<ScanState | null> => {
   try {
     const resp = (await chrome.tabs.sendMessage(tabId, {
       type: "vellum:rescan",
-    })) as ScanResultMessage | undefined;
+    } satisfies RuntimeMessage)) as ScanResultMessage | undefined;
     if (!resp) return null;
     return {
       count: resp.count,
       invalidCount: resp.invalidCount,
       payloads: resp.payloads,
+      candidates: resp.candidates,
+      selectionText: resp.selectionText,
       url: resp.url,
       updatedAt: Date.now(),
+      verification: null,
     };
   } catch {
     return null;
   }
+};
+
+const verifyText = async (
+  tabId: number,
+  source: "selection" | "candidate",
+  text: string,
+  payloadHex?: string,
+): Promise<VerificationState | null> => {
+  const resp = (await chrome.runtime.sendMessage({
+    type: "vellum:verify-text",
+    tabId,
+    source,
+    text,
+    textPreview: previewText(text),
+    payloadHex,
+  } satisfies RuntimeMessage)) as { verification?: VerificationState } | undefined;
+  return resp?.verification ?? null;
 };
 
 const renderEmpty = (): void => {
@@ -92,11 +110,67 @@ const renderEmpty = (): void => {
   if (summary) summary.hidden = true;
 };
 
+const escapeHtml = (value: string): string =>
+  value.replace(/[&<>"']/g, (ch) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[ch] ?? ch;
+  });
+
+const field = (label: string, value: string | number | null | undefined): string =>
+  value === null || value === undefined || value === ""
+    ? ""
+    : `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd>`;
+
+const renderVerification = (verification: VerificationState | null): void => {
+  const card = $<HTMLElement>("#verify-card");
+  const status = $<HTMLElement>("#verify-status");
+  const preview = $<HTMLParagraphElement>("#verify-preview");
+  const grid = $<HTMLElement>("#proof-grid");
+  if (!card || !status || !preview || !grid) return;
+
+  if (!verification) {
+    card.hidden = true;
+    return;
+  }
+
+  const result = verification.result;
+  const response = result.response;
+  const verified = response?.verified === true;
+  const label = result.error
+    ? "Verifier error"
+    : verified
+      ? "Vellum verified"
+      : "Not verified";
+
+  card.hidden = false;
+  status.className = `verify-status ${verified ? "ok" : "bad"}`;
+  status.textContent = label;
+  preview.textContent =
+    result.error ?? response?.reason ?? verification.textPreview;
+  grid.innerHTML = [
+    field("source", verification.source),
+    field("company", response?.company),
+    field("issuer", response?.issuer_id),
+    field("hash", response?.sha256_hash),
+    field("tx", response?.tx_hash),
+    field("block", response?.block_num),
+    field("api", result.apiBaseUrl),
+  ].join("");
+};
+
 const renderState = (state: ScanState | null, url?: string): void => {
   const subtitle = $<HTMLParagraphElement>("#page-url");
   if (subtitle) {
     subtitle.textContent = url ?? state?.url ?? "(no active page)";
   }
+
+  renderVerification(state?.verification ?? null);
 
   if (!state || state.count === 0) {
     renderEmpty();
@@ -135,6 +209,9 @@ const renderState = (state: ScanState | null, url?: string): void => {
   }
 
   for (const p of state.payloads) {
+    const candidate = state.candidates.find(
+      (c) => c.payload.rawPayloadHex === p.rawPayloadHex,
+    );
     const node = template.content.firstElementChild?.cloneNode(true);
     if (!(node instanceof HTMLElement)) continue;
 
@@ -145,16 +222,49 @@ const renderState = (state: ScanState | null, url?: string): void => {
 
     setField("issuerId", String(p.issuerId));
     setField("modelId", `${p.modelId} (v${p.modelVersionId})`);
-    setField("keyId", String(p.keyId));
     setField("rawPayloadHex", p.rawPayloadHex);
+    setField("preview", candidate?.preview ?? "Detected watermark payload.");
 
-    const badge = node.querySelector<HTMLElement>('[data-field="crcBadge"]');
-    if (badge) {
-      badge.textContent = p.crcValid ? "valid" : "invalid";
-      badge.classList.add(p.crcValid ? "ok" : "bad");
+    const button = node.querySelector<HTMLButtonElement>(
+      '[data-action="verify-candidate"]',
+    );
+    if (button && candidate) {
+      button.addEventListener("click", async () => {
+        const tabId = await getActiveTabId();
+        if (tabId === null) return;
+        button.disabled = true;
+        button.textContent = "Verifying...";
+        const verification = await verifyText(
+          tabId,
+          "candidate",
+          candidate.text,
+          candidate.payload.rawPayloadHex,
+        );
+        renderVerification(verification);
+        button.disabled = false;
+        button.textContent = "Verify this text";
+      });
+    } else if (button) {
+      button.disabled = true;
+      button.textContent = "No candidate text";
     }
 
     list.appendChild(node);
+  }
+};
+
+const applyEndpointUi = (apiBaseUrl: string): void => {
+  const select = $<HTMLSelectElement>("#api-base-url");
+  const custom = $<HTMLInputElement>("#custom-api-base-url");
+  if (!select || !custom) return;
+  const normalized = normalizeApiBaseUrl(apiBaseUrl);
+  if ((KNOWN_API_BASE_URLS as readonly string[]).includes(normalized)) {
+    select.value = normalized;
+    custom.hidden = true;
+  } else {
+    select.value = "custom";
+    custom.hidden = false;
+    custom.value = normalized;
   }
 };
 
@@ -169,6 +279,22 @@ const init = async (): Promise<void> => {
 
   const state = await fetchState(tabId);
   renderState(state);
+  applyEndpointUi(await fetchSettings());
+
+  const select = $<HTMLSelectElement>("#api-base-url");
+  const custom = $<HTMLInputElement>("#custom-api-base-url");
+  select?.addEventListener("change", async () => {
+    if (select.value === "custom") {
+      if (custom) custom.hidden = false;
+      return;
+    }
+    const saved = await saveApiBaseUrl(select.value);
+    applyEndpointUi(saved);
+  });
+  custom?.addEventListener("change", async () => {
+    const saved = await saveApiBaseUrl(custom.value);
+    applyEndpointUi(saved);
+  });
 
   const scanBtn = $<HTMLButtonElement>("#scan-btn");
   scanBtn?.addEventListener("click", async () => {
@@ -180,15 +306,29 @@ const init = async (): Promise<void> => {
     scanBtn.textContent = "Scan this page";
   });
 
-  const dashBtn = $<HTMLButtonElement>("#dashboard-btn");
-  dashBtn?.addEventListener("click", () => {
-    const href = dashBtn.dataset.href;
-    if (!href) return;
-    try {
-      chrome.tabs.create({ url: href });
-    } catch {
-      window.open(href, "_blank", "noopener");
+  const selectionBtn = $<HTMLButtonElement>("#verify-selection-btn");
+  selectionBtn?.addEventListener("click", async () => {
+    selectionBtn.disabled = true;
+    selectionBtn.textContent = "Checking...";
+    const fresh = await requestRescan(tabId);
+    const selection = fresh?.selectionText.trim() ?? "";
+    if (!selection) {
+      renderVerification({
+        source: "selection",
+        textPreview: "No selected text on the active page.",
+        result: {
+          ok: false,
+          apiBaseUrl: await fetchSettings(),
+          checkedAt: Date.now(),
+          error: "Select the pasted paragraph on the page, then click Verify selection.",
+        },
+      });
+    } else {
+      const verification = await verifyText(tabId, "selection", selection);
+      renderVerification(verification);
     }
+    selectionBtn.disabled = false;
+    selectionBtn.textContent = "Verify selection";
   });
 };
 

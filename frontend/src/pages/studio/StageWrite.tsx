@@ -20,9 +20,9 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 const SAMPLE_PROMPTS = [
-  "Write a one-paragraph explanation of how content provenance works.",
-  "Explain why authenticated AI agent actions matter for regulated teams.",
-  "Describe how browser wallets can prove provenance without sharing private keys.",
+  "[demo prompt] Explain how content provenance works.",
+  "[demo prompt] Explain why authenticated AI agent actions matter.",
+  "[demo prompt] Explain how browser wallets prove provenance.",
 ];
 
 export function StageWrite({ flow }: { flow: StudioFlow }) {
@@ -120,7 +120,7 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
                   active={flow.provider === "google"}
                   onClick={() => {
                     flow.setProvider("google");
-                    flow.setModel(providerModels.google[0]?.id ?? "gemma-4-27b-it");
+                    flow.setModel(providerModels.google[0]?.id ?? "gemma-4-31b-it");
                   }}
                 >Google · Gemma</Pill>
               )}

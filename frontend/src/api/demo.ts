@@ -20,8 +20,12 @@ export interface AutoRegisterResponse {
 
 export const demoApi = {
   identity: () => get<DemoIdentity>("/api/demo/identity"),
-  autoRegister: (eth_address: string, name?: string) =>
-    post<AutoRegisterResponse>("/api/demo/auto-register", { eth_address, name }),
+  autoRegister: (eth_address: string, public_key_hex: string, name?: string) =>
+    post<AutoRegisterResponse>("/api/demo/auto-register", {
+      eth_address,
+      public_key_hex,
+      name,
+    }),
   samplePrompts: () => get<{ prompts: string[] }>("/api/demo/sample-prompts"),
 };
 

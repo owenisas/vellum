@@ -6,6 +6,7 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 
 from tests.conftest import sign_text
+from vellum.auth.ecdsa import generate_keypair
 from vellum.auth.wallets import build_wallet_message
 
 
@@ -17,6 +18,77 @@ async def test_demo_identity_grants_chat(client):
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["text"]
+
+
+async def test_demo_auto_register_is_idempotent(client):
+    """The public demo can bootstrap a browser-held issuer without admin setup."""
+    _private_key, public_key, eth_address = generate_keypair()
+
+    first = await client.post(
+        "/api/demo/auto-register",
+        json={"eth_address": eth_address, "public_key_hex": public_key},
+    )
+    assert first.status_code == 200, first.text
+    created = first.json()
+    assert created["issuer_id"] == 1
+    assert created["eth_address"].lower() == eth_address.lower()
+
+    again = await client.post(
+        "/api/demo/auto-register",
+        json={"eth_address": eth_address, "public_key_hex": public_key},
+    )
+    assert again.status_code == 200, again.text
+    assert again.json()["issuer_id"] == created["issuer_id"]
+
+    companies = await client.get("/api/companies")
+    assert companies.status_code == 200
+    assert len(companies.json()) == 1
+
+
+async def test_demo_auto_registered_issuer_can_anchor_and_verify(client):
+    """Mirrors the public /studio happy path after browser issuer bootstrap."""
+    private_key, public_key, eth_address = generate_keypair()
+
+    issuer = await client.post(
+        "/api/demo/auto-register",
+        json={"eth_address": eth_address, "public_key_hex": public_key},
+    )
+    assert issuer.status_code == 200, issuer.text
+
+    chat = await client.post(
+        "/api/chat",
+        json={
+            "provider": "fixture",
+            "messages": [{"role": "user", "content": "studio happy path"}],
+            "watermark": True,
+            "wm_params": {
+                "issuer_id": issuer.json()["issuer_id"],
+                "model_id": 1,
+                "model_version_id": 1,
+                "key_id": 1,
+            },
+        },
+    )
+    assert chat.status_code == 200, chat.text
+    text = chat.json()["text"]
+    _hash, sig = sign_text(text, private_key)
+
+    anchor = await client.post(
+        "/api/anchor",
+        json={
+            "text": text,
+            "raw_text": chat.json()["raw_text"],
+            "signature_hex": sig,
+            "issuer_id": issuer.json()["issuer_id"],
+            "metadata": {"provider": "fixture", "model": "fixture"},
+        },
+    )
+    assert anchor.status_code == 200, anchor.text
+
+    verify = await client.post("/api/verify", json={"text": text})
+    assert verify.status_code == 200, verify.text
+    assert verify.json()["verified"] is True
+    assert verify.json()["issuer_id"] == issuer.json()["issuer_id"]
 
 
 async def test_anchor_requires_signature_match(client, make_company):

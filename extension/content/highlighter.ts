@@ -24,11 +24,25 @@ const STYLE_CSS = `
   background: rgba(34, 197, 94, 0.18);
   border-bottom: 2px solid rgb(34, 197, 94);
 }
+.${DETECTED_CLASS}.vellum-verified {
+  background: rgba(37, 99, 235, 0.18);
+  border-bottom-color: rgb(37, 99, 235);
+}
+.${DETECTED_CLASS}.vellum-unverified {
+  background: rgba(220, 38, 38, 0.14);
+  border-bottom-color: rgb(220, 38, 38);
+}
 .${BADGE_CLASS} {
   display: inline-block;
   margin-left: 4px;
   color: rgb(22, 163, 74);
   font-weight: bold;
+}
+.${BADGE_CLASS}.vellum-verified {
+  color: rgb(37, 99, 235);
+}
+.${BADGE_CLASS}.vellum-unverified {
+  color: rgb(220, 38, 38);
 }
 `.trim();
 
@@ -96,6 +110,28 @@ export class Highlighter {
     badges.forEach((b) => b.remove());
   }
 
+  /** Mark an already-highlighted payload after the backend verifier responds. */
+  markVerification(payloadHex: string | undefined, verified: boolean, label: string): void {
+    const root = document.body;
+    if (!root) return;
+    const detected = root.querySelectorAll<HTMLSpanElement>(`span.${DETECTED_CLASS}`);
+    detected.forEach((span) => {
+      if (payloadHex && span.dataset.payloadHex !== payloadHex) return;
+      span.classList.remove("vellum-verified", "vellum-unverified");
+      span.classList.add(verified ? "vellum-verified" : "vellum-unverified");
+      span.title = label;
+      const parent = span.parentElement;
+      if (!parent) return;
+      const badge = parent.querySelector<HTMLSpanElement>(`span.${BADGE_CLASS}`);
+      if (badge) {
+        badge.classList.remove("vellum-verified", "vellum-unverified");
+        badge.classList.add(verified ? "vellum-verified" : "vellum-unverified");
+        badge.textContent = verified ? "Vellum verified" : "Vellum not verified";
+        badge.title = label;
+      }
+    });
+  }
+
   private ensureStyle(): void {
     if (this.styleInjected) return;
     if (document.getElementById(STYLE_ID)) {
@@ -152,7 +188,7 @@ export class Highlighter {
   private appendBadge(parent: Element): void {
     const badge = document.createElement("span");
     badge.className = BADGE_CLASS;
-    badge.textContent = "✓"; // ✓
+    badge.textContent = "Vellum watermark";
     badge.title = "Vellum watermark detected";
     parent.appendChild(badge);
   }

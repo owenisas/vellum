@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/useAuth";
 import { useCompanies } from "../api/companies";
+import { useDemoIdentity } from "../hooks/useDemoIdentity";
 import { StageIndicator } from "../components/ui/StageIndicator";
 import { EditorialCaption } from "../components/ui/EditorialCaption";
 import { AddressBlock } from "../components/ui/AddressBlock";
@@ -21,7 +23,7 @@ import { StageProve } from "./studio/StageProve";
 import type { AnchorResponse, VerifyResponse, WalletProof } from "../api/types";
 import styles from "./Studio.module.css";
 
-const DEFAULT_PROMPT = "In one short paragraph, explain why text provenance matters for AI-generated content.";
+const DEFAULT_PROMPT = "[demo prompt] Explain why text provenance matters for AI-generated content.";
 
 function downloadJson(filename: string, obj: unknown) {
   trigger(filename, new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }));
@@ -39,6 +41,8 @@ function trigger(filename: string, blob: Blob) {
 export function Studio() {
   const auth = useAuth();
   const companies = useCompanies();
+  const demoIdentity = useDemoIdentity();
+  const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
 
   const [stage, setStageState] = useState<Stage>(() => {
@@ -71,7 +75,7 @@ export function Studio() {
 
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [provider, setProvider] = useState<"google" | "fixture">("fixture");
-  const [model, setModel] = useState<string>("gemma-4-27b-it");
+  const [model, setModel] = useState<string>("gemma-4-31b-it");
   const [generatedText, setGeneratedText] = useState<string>("");
   const [rawText, setRawText] = useState<string>("");
   const [textHash, setTextHash] = useState<string>("");
@@ -117,6 +121,14 @@ export function Studio() {
     [stage, prompt, provider, model, generatedText, rawText, textHash, issuerId, privateKey, signerMode, includeEvmProof, includeSolanaProof, solanaTxSignature, walletProofs, signature, signedAt, nonceHex, bundle, verifyClean, verifyTampered, tamperedText],
   );
 
+  useEffect(() => {
+    if (!auth.demo || demoIdentity.status.state !== "ready") return;
+    const { identity } = demoIdentity.status;
+    setIssuerId((current) => current || identity.issuerId);
+    setPrivateKey((current) => current || identity.privateKey);
+    void queryClient.invalidateQueries({ queryKey: ["companies"] });
+  }, [auth.demo, demoIdentity.status, queryClient]);
+
   if (auth.isLoading) {
     return (
       <section className={`container ${styles.boot}`}>
@@ -138,6 +150,30 @@ export function Studio() {
           into the proof bundle as the authorized agent actor.
         </p>
         <Button onClick={auth.login}>Log in with Auth0</Button>
+      </section>
+    );
+  }
+
+  if (auth.demo && demoIdentity.status.state === "loading") {
+    return (
+      <section className={`container ${styles.boot}`}>
+        <EditorialCaption number="00" rule>Studio</EditorialCaption>
+        <h2 className={styles.bootTitle}>Preparing the demo issuer...</h2>
+        <p className={styles.bootBody}>
+          Vellum is creating a local browser key and registering it with the
+          public demo registry so signing and anchoring work in one pass.
+        </p>
+      </section>
+    );
+  }
+
+  if (auth.demo && demoIdentity.status.state === "error") {
+    return (
+      <section className={`container ${styles.boot}`}>
+        <EditorialCaption number="00" rule>Studio</EditorialCaption>
+        <h2 className={styles.bootTitle}>Demo issuer setup failed.</h2>
+        <p className={styles.bootBody}>{demoIdentity.status.error}</p>
+        <Button onClick={demoIdentity.reset}>Reset demo identity</Button>
       </section>
     );
   }

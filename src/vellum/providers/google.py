@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 GOOGLE_MODELS = [
-    {"id": "gemma-4-27b-it", "name": "Gemma 4 27B (default)"},
-    {"id": "gemma-4-12b-it", "name": "Gemma 4 12B"},
+    {"id": "gemma-4-31b-it", "name": "Gemma 4 31B (default)"},
+    {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash"},
+    {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
     {"id": "gemma-3-27b-it", "name": "Gemma 3 27B"},
-    {"id": "gemini-2.0-flash-exp", "name": "Gemini 2.0 Flash"},
 ]
 
 

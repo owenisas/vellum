@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
 import { demoApi } from "../api/demo";
+import { features } from "../config/env";
 
 const PKEY_STORAGE_KEY = "vt_demo_pkey";
 const ISSUER_STORAGE_KEY = "vt_demo_issuer";
@@ -42,6 +43,12 @@ export function useDemoIdentity(): {
     let cancelled = false;
     (async () => {
       try {
+        if (features.auth0) {
+          if (!cancelled) {
+            setStatus({ state: "error", error: "Demo identity is disabled when Auth0 is enabled." });
+          }
+          return;
+        }
         // Step 1: load or create wallet
         let pkey = localStorage.getItem(PKEY_STORAGE_KEY);
         if (!pkey) {
@@ -51,7 +58,9 @@ export function useDemoIdentity(): {
         }
         const wallet = new ethers.Wallet(pkey);
 
-        // Step 2: load or create issuer
+        // Step 2: reconcile the browser wallet with the backend issuer registry.
+        // This runs on every mount so a redeployed app with an empty database can
+        // recreate the issuer for the cached local demo key.
         const cachedIssuerJson = localStorage.getItem(ISSUER_STORAGE_KEY);
         let assigned: { issuer_id: number; name: string } | null = null;
         if (cachedIssuerJson) {
@@ -64,14 +73,16 @@ export function useDemoIdentity(): {
             // bad cache; fall through to register
           }
         }
-        if (!assigned) {
-          const r = await demoApi.autoRegister(wallet.address);
-          assigned = { issuer_id: r.issuer_id, name: r.name };
-          localStorage.setItem(
-            ISSUER_STORAGE_KEY,
-            JSON.stringify({ address: wallet.address, ...assigned }),
-          );
-        }
+        const r = await demoApi.autoRegister(
+          wallet.address,
+          wallet.signingKey.publicKey,
+          assigned?.name,
+        );
+        assigned = { issuer_id: r.issuer_id, name: r.name };
+        localStorage.setItem(
+          ISSUER_STORAGE_KEY,
+          JSON.stringify({ address: wallet.address, ...assigned }),
+        );
 
         if (cancelled) return;
         setStatus({

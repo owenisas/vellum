@@ -5,7 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p . --outDir dist && cp manifest.json dist/ && cp -r popup/popup.html popup/popup.css icons dist/",
+    "build": "npm run clean && tsc -p . --outDir dist && cp manifest.json dist/ && cp popup/popup.html popup/popup.css dist/popup/ && cp -R icons dist/icons",
+    "check": "tsc -p . --noEmit",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Vellum Watermark Detector",
   "version": "2.0.0",
-  "description": "Detects invisible Unicode watermarks (zero-width characters) embedded in web page text and surfaces issuer / model metadata.",
+  "description": "Detects Vellum watermarks in web pages and verifies selected or detected text against the Vellum registry.",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

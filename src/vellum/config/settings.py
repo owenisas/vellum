@@ -54,7 +54,7 @@ class LLMSettings(BaseSettings):
         default="https://api.minimax.io/anthropic", alias="MINIMAX_BASE_URL"
     )
     default_provider: LLMProvider = Field(default=LLMProvider.GOOGLE, alias="DEFAULT_PROVIDER")
-    default_model: str = Field(default="gemma-4-27b-it", alias="DEFAULT_MODEL")
+    default_model: str = Field(default="gemma-4-31b-it", alias="DEFAULT_MODEL")
 
 
 class AppSettings(BaseSettings):
@@ -98,7 +98,7 @@ class AppSettings(BaseSettings):
         return str(v).lower()
 
     @model_validator(mode="after")
-    def _validate_solana_keypair(self) -> "AppSettings":
+    def _validate_solana_keypair(self) -> AppSettings:
         if (
             self.chain_backend == ChainBackendType.SOLANA
             and not self.solana.solana_keypair_path

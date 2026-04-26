@@ -8,21 +8,32 @@
   </head>
   <body>
     <header class="header">
-      <h1 class="title">Vellum Watermark Detector</h1>
-      <p class="subtitle" id="page-url">Loading…</p>
+      <h1 class="title">Vellum Verifier</h1>
+      <p class="subtitle" id="page-url">Loading...</p>
     </header>
+
+    <section class="settings">
+      <label class="field-label" for="api-base-url">Verifier endpoint</label>
+      <select id="api-base-url" class="select">
+        <option value="https://vellum-387oq.ondigitalocean.app">Public demo</option>
+        <option value="https://vellum-auth0-ttohk.ondigitalocean.app">Auth0 demo</option>
+        <option value="custom">Custom...</option>
+      </select>
+      <input
+        id="custom-api-base-url"
+        class="input"
+        type="url"
+        placeholder="https://your-vellum-app.example"
+        hidden
+      />
+    </section>
 
     <section class="actions">
       <button type="button" class="btn btn-primary" id="scan-btn">
-        Scan this page
+        Scan page
       </button>
-      <button
-        type="button"
-        class="btn btn-secondary"
-        id="dashboard-btn"
-        data-href="https://vellum.io/dashboard"
-      >
-        Open dashboard
+      <button type="button" class="btn btn-secondary" id="verify-selection-btn">
+        Verify selection
       </button>
     </section>
 
@@ -32,9 +43,16 @@
       <span class="summary-invalid" id="summary-invalid"></span>
     </section>
 
+    <section class="verify-card" id="verify-card" hidden>
+      <div class="verify-status" id="verify-status"></div>
+      <p class="verify-preview" id="verify-preview"></p>
+      <dl class="proof-grid" id="proof-grid"></dl>
+    </section>
+
     <section class="results" id="results">
       <p class="empty" id="empty-state">
-        No watermarks detected on this page.
+        No Vellum watermark detected on this page. Select pasted text and click
+        "Verify selection" to check it directly.
       </p>
       <ul class="result-list" id="result-list" hidden></ul>
     </section>
@@ -50,17 +68,13 @@
           <span class="result-value" data-field="modelId"></span>
         </div>
         <div class="result-row">
-          <span class="result-label">key</span>
-          <span class="result-value" data-field="keyId"></span>
-        </div>
-        <div class="result-row result-row-hex">
           <span class="result-label">payload</span>
           <code class="result-value" data-field="rawPayloadHex"></code>
         </div>
-        <div class="result-row">
-          <span class="result-label">crc</span>
-          <span class="result-badge" data-field="crcBadge"></span>
-        </div>
+        <p class="candidate-preview" data-field="preview"></p>
+        <button type="button" class="btn btn-mini" data-action="verify-candidate">
+          Verify this text
+        </button>
       </li>
     </template>
 

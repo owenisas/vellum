@@ -50,7 +50,7 @@ jobs:
       DEMO_MODE: ${{ vars.DEMO_MODE || 'live' }}
       CHAIN_BACKEND: ${{ vars.CHAIN_BACKEND || 'simulated' }}
       DEFAULT_PROVIDER: ${{ vars.DEFAULT_PROVIDER || 'google' }}
-      DEFAULT_MODEL: ${{ vars.DEFAULT_MODEL || 'gemma-4-27b-it' }}
+      DEFAULT_MODEL: ${{ vars.DEFAULT_MODEL || 'gemma-4-31b-it' }}
       AUTH0_DOMAIN: ${{ inputs.auth0_domain || vars.AUTH0_DOMAIN }}
       AUTH0_AUDIENCE: ${{ inputs.auth0_audience || vars.AUTH0_AUDIENCE || 'https://api.vellum.io' }}
       AUTH0_SPA_CLIENT_ID: ${{ inputs.auth0_spa_client_id || vars.AUTH0_SPA_CLIENT_ID }}
@@ -131,7 +131,7 @@ jobs:
               "__DEMO_MODE__": os.environ.get("DEMO_MODE", "live"),
               "__CHAIN_BACKEND__": os.environ.get("CHAIN_BACKEND", "simulated"),
               "__DEFAULT_PROVIDER__": os.environ.get("DEFAULT_PROVIDER", "google"),
-              "__DEFAULT_MODEL__": os.environ.get("DEFAULT_MODEL", "gemma-4-27b-it"),
+              "__DEFAULT_MODEL__": os.environ.get("DEFAULT_MODEL", "gemma-4-31b-it"),
               "__AUTH0_DOMAIN__": os.environ.get("AUTH0_DOMAIN", ""),
               "__AUTH0_AUDIENCE__": os.environ.get("AUTH0_AUDIENCE", "https://api.vellum.io"),
               "__AUTH0_SPA_CLIENT_ID__": os.environ.get("AUTH0_SPA_CLIENT_ID", ""),
