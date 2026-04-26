@@ -16,7 +16,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         scope:
           "openid profile email anchor:create company:create chat:invoke",
       }}
-      cacheLocation="localstorage"
+      cacheLocation="memory"
       useRefreshTokens
     >
       {children}

@@ -39,6 +39,7 @@ export interface RequestOptions {
 
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_RETRIES = 1;
+const RETRYABLE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 async function request<T>(
   method: string,
@@ -52,7 +53,7 @@ async function request<T>(
   };
 
   const url = `${env.API_BASE_URL}${path}`;
-  const retries = options.retries ?? DEFAULT_RETRIES;
+  const retries = options.retries ?? (RETRYABLE_METHODS.has(method) ? DEFAULT_RETRIES : 0);
 
   let lastError: unknown = null;
 

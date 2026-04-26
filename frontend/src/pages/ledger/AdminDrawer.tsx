@@ -31,6 +31,7 @@ function CreateForm() {
   const [adminSecret, setAdminSecret] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const previewAddress = pkey ? walletAddressFromPrivateKey(pkey) : null;
 
   const submit = async () => {
     setErr(null); setResult(null);
@@ -68,11 +69,22 @@ function CreateForm() {
           {create.isPending ? "Registering…" : "Register"}
         </Button>
       </div>
-      {pkey && <AddressBlock address={new ethers.Wallet(pkey).address} label="Generated address" />}
+      {previewAddress && <AddressBlock address={previewAddress} label="Generated address" />}
+      {pkey && !previewAddress && (
+        <p className={styles.err}>Enter a valid private key to preview the address.</p>
+      )}
       {result && <p className={styles.ok}>{result}</p>}
       {err && <p className={styles.err}>{err}</p>}
     </section>
   );
+}
+
+function walletAddressFromPrivateKey(privateKey: string): string | null {
+  try {
+    return new ethers.Wallet(privateKey).address;
+  } catch {
+    return null;
+  }
 }
 
 function Field({
