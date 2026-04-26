@@ -208,6 +208,8 @@ class ProofBuilder:
 
     def _anchor_type(self, chain_backend_type: str, receipt: Any) -> str:
         if chain_backend_type == "solana":
+            if not receipt.solana_tx_signature:
+                return "solana_local_fallback"
             if receipt.merkle_root:
                 return "solana_merkle"
             return "solana_per_response"

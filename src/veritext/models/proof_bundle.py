@@ -79,7 +79,12 @@ class InclusionProofStep(BaseModel):
 
 
 class AnchorInfo(BaseModel):
-    type: Literal["solana_per_response", "solana_merkle", "simulated_chain"]
+    type: Literal[
+        "solana_per_response",
+        "solana_merkle",
+        "solana_local_fallback",
+        "simulated_chain",
+    ]
     tx_hash: str | None = None
     block_num: int | None = None
     timestamp: str

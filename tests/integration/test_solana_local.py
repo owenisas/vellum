@@ -215,3 +215,50 @@ async def test_proof_bundle_solana_anchor_metadata(solana_app_client, monkeypatc
     assert body["proof_bundle_v2"]["verification_hints"]["explorer_url"] == (
         f"https://explorer.solana.com/tx/{SOLANA_SIGNATURE}?cluster=devnet"
     )
+
+
+@pytest.mark.asyncio
+async def test_proof_bundle_labels_solana_fallback_as_local(solana_app_client, monkeypatch):
+    client, app = solana_app_client
+    issuer_id = 43
+    text = "Solana RPC fallback proof bundle"
+    timestamp = 1_700_000_001
+    bundle_nonce = "11" * 32
+    acct = Account.create()
+
+    async def fail_post_memo(self, memo_bytes):
+        raise RuntimeError("rpc unavailable")
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fail_post_memo)
+    company_resp = await client.post(
+        "/api/companies",
+        json={
+            "name": "Fallback Co",
+            "issuer_id": issuer_id,
+            "eth_address": acct.address,
+            "public_key_hex": acct.address,
+            "admin_secret": app.state.settings.registry_admin_secret,
+        },
+    )
+    assert company_resp.status_code == 200, company_resp.text
+    signed = _sign_anchor(text, issuer_id, acct.key, timestamp, bundle_nonce)
+
+    anchor_resp = await client.post(
+        "/api/anchor",
+        json={
+            "text": text,
+            "issuer_id": issuer_id,
+            "signature_hex": signed.signature.hex(),
+            "sig_scheme": "eip712",
+            "timestamp": timestamp,
+            "bundle_nonce_hex": bundle_nonce,
+        },
+    )
+
+    assert anchor_resp.status_code == 200, anchor_resp.text
+    body = anchor_resp.json()
+    anchor = body["proof_bundle_v2"]["anchors"][0]
+    assert body["chain_receipt"]["solana_tx_signature"] is None
+    assert anchor["type"] == "solana_local_fallback"
+    assert anchor["tx_hash"] == body["chain_receipt"]["tx_hash"]
+    assert body["proof_bundle_v2"]["verification_hints"]["explorer_url"] is None
