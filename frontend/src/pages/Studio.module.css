@@ -3,6 +3,10 @@
   padding-bottom: var(--s-11);
   position: relative;
 }
+/* extra room for the fixed "Take it with you" bar */
+.shellWithDock {
+  padding-bottom: calc(var(--s-11) + 2.5rem);
+}
 
 .top {
   display: flex;

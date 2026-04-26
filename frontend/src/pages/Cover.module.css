@@ -3,7 +3,7 @@
   min-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
-  /* keep horizontal paint contained; do not clip vertical (breaks layout + scroll with Lenis) */
+  /* keep horizontal paint contained; do not clip vertical (breaks nested layout/scroll) */
   overflow-x: hidden;
   overflow-y: visible;
   isolation: isolate;

@@ -10,6 +10,7 @@ import { AddressBlock } from "../components/ui/AddressBlock";
 import { Button } from "../components/ui/Button";
 import { ease } from "../lib/motion";
 import { copy } from "../lib/hash";
+import { cn } from "../lib/cn";
 
 import { STAGES, type Stage, type StudioFlow } from "./studio/StudioState";
 import { StageWrite } from "./studio/StageWrite";
@@ -141,7 +142,7 @@ export function Studio() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4, ease }}
-      className={`container ${styles.shell}`}
+      className={cn("container", styles.shell, bundle && styles.shellWithDock)}
     >
       <header className={styles.top}>
         <div className={styles.identity}>
