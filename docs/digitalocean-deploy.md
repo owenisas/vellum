@@ -1,12 +1,13 @@
 # DigitalOcean Deployment
 
-Vellum deploys to DigitalOcean App Platform as two components:
+Vellum deploys to DigitalOcean App Platform as a containerized app:
 
-- `api`: FastAPI backend served under `/api`
-- `web`: Vite/React static frontend served under `/`
+- FastAPI backend served under `/api`
+- Vite/React frontend built into the image and served by FastAPI under `/`
 
-The GitHub Actions workflow at `.github/workflows/deploy-digitalocean.yml` renders
-`.do/app.yaml.template` and deploys it with `doctl`.
+The GitHub Actions workflow at `.github/workflows/deploy-digitalocean.yml` builds
+and pushes an image to DigitalOcean Container Registry, renders `.do/app.yaml.template`,
+and deploys it with `doctl`.
 
 ## Required GitHub Secret
 
@@ -30,6 +31,7 @@ MINIMAX_API_KEY
 
 ```text
 DIGITALOCEAN_APP_ID
+DIGITALOCEAN_REGISTRY_NAME
 DEMO_MODE=live
 CHAIN_BACKEND=simulated
 DEFAULT_PROVIDER=google

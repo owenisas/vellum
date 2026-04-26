@@ -2,20 +2,19 @@ name: vellum
 region: nyc
 
 services:
-  - name: api
-    github:
-      repo: __GITHUB_REPOSITORY__
-      branch: __DO_BRANCH__
-      deploy_on_push: true
-    source_dir: /
-    environment_slug: python
-    build_command: pip install .
+  - name: web
+    image:
+      registry_type: DOCR
+      registry: "__DO_REGISTRY_NAME__"
+      repository: vellum
+      tag: "__IMAGE_TAG__"
+      deploy_on_push: false
     run_command: uvicorn vellum.app:app --host 0.0.0.0 --port ${PORT:-8080}
     http_port: 8080
     instance_count: 1
     instance_size_slug: basic-xxs
     routes:
-      - path: /api
+      - path: /
     health_check:
       http_path: /api/health
     envs:
@@ -67,30 +66,3 @@ services:
       - key: AUTH0_SPA_CLIENT_ID
         scope: RUN_TIME
         value: "__AUTH0_SPA_CLIENT_ID__"
-
-static_sites:
-  - name: web
-    github:
-      repo: __GITHUB_REPOSITORY__
-      branch: __DO_BRANCH__
-      deploy_on_push: true
-    source_dir: /frontend
-    build_command: npm install && npm run build
-    output_dir: dist
-    index_document: index.html
-    catchall_document: index.html
-    routes:
-      - path: /
-    envs:
-      - key: VITE_API_BASE_URL
-        scope: BUILD_TIME
-        value: ""
-      - key: VITE_AUTH0_DOMAIN
-        scope: BUILD_TIME
-        value: "__AUTH0_DOMAIN__"
-      - key: VITE_AUTH0_CLIENT_ID
-        scope: BUILD_TIME
-        value: "__AUTH0_SPA_CLIENT_ID__"
-      - key: VITE_AUTH0_AUDIENCE
-        scope: BUILD_TIME
-        value: "__AUTH0_AUDIENCE__"

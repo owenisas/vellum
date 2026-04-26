@@ -20,6 +20,7 @@ jobs:
     env:
       DO_BRANCH: ${{ github.ref_name }}
       DO_APP_ID: ${{ inputs.app_id || vars.DIGITALOCEAN_APP_ID }}
+      DIGITALOCEAN_REGISTRY_NAME: ${{ vars.DIGITALOCEAN_REGISTRY_NAME }}
       DEMO_MODE: ${{ vars.DEMO_MODE || 'live' }}
       CHAIN_BACKEND: ${{ vars.CHAIN_BACKEND || 'simulated' }}
       DEFAULT_PROVIDER: ${{ vars.DEFAULT_PROVIDER || 'google' }}
@@ -57,6 +58,39 @@ jobs:
           npm install
           npm run build
 
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Build and push container image
+        run: |
+          owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          registry_name="${DIGITALOCEAN_REGISTRY_NAME:-vellum-${owner}}"
+          image_tag="${GITHUB_SHA}"
+
+          if ! doctl registry get "${registry_name}" >/dev/null 2>&1; then
+            doctl registry create "${registry_name}" --region nyc
+          fi
+
+          doctl registry login --expiry-seconds 1200
+
+          image="registry.digitalocean.com/${registry_name}/vellum:${image_tag}"
+          docker build \
+            -f docker/Dockerfile \
+            --build-arg VITE_API_BASE_URL="" \
+            --build-arg VITE_AUTH0_DOMAIN="${AUTH0_DOMAIN}" \
+            --build-arg VITE_AUTH0_CLIENT_ID="${AUTH0_SPA_CLIENT_ID}" \
+            --build-arg VITE_AUTH0_AUDIENCE="${AUTH0_AUDIENCE}" \
+            -t "${image}" \
+            .
+          docker push "${image}"
+
+          {
+            echo "DO_REGISTRY_NAME=${registry_name}"
+            echo "IMAGE_TAG=${image_tag}"
+          } >> "${GITHUB_ENV}"
+
       - name: Render DigitalOcean app spec
         run: |
           python - <<'PY'
@@ -64,8 +98,8 @@ jobs:
           import os
 
           replacements = {
-              "__GITHUB_REPOSITORY__": os.environ["GITHUB_REPOSITORY"],
-              "__DO_BRANCH__": os.environ["DO_BRANCH"],
+              "__DO_REGISTRY_NAME__": os.environ["DO_REGISTRY_NAME"],
+              "__IMAGE_TAG__": os.environ["IMAGE_TAG"],
               "__DEMO_MODE__": os.environ.get("DEMO_MODE", "live"),
               "__CHAIN_BACKEND__": os.environ.get("CHAIN_BACKEND", "simulated"),
               "__DEFAULT_PROVIDER__": os.environ.get("DEFAULT_PROVIDER", "google"),
@@ -83,11 +117,6 @@ jobs:
               spec = spec.replace(key, value)
           Path(".do/app.generated.yaml").write_text(spec)
           PY
-
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Deploy app
         run: |

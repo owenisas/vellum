@@ -12,6 +12,15 @@
 FROM node:20-slim AS frontend-build
 WORKDIR /app
 
+ARG VITE_API_BASE_URL=""
+ARG VITE_AUTH0_DOMAIN=""
+ARG VITE_AUTH0_CLIENT_ID=""
+ARG VITE_AUTH0_AUDIENCE="https://api.vellum.io"
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_AUTH0_DOMAIN=$VITE_AUTH0_DOMAIN \
+    VITE_AUTH0_CLIENT_ID=$VITE_AUTH0_CLIENT_ID \
+    VITE_AUTH0_AUDIENCE=$VITE_AUTH0_AUDIENCE
+
 # Install deps first for better layer caching.
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
@@ -43,11 +52,11 @@ COPY uv.lock* ./
 COPY packages/ ./packages/
 
 # Resolve and install deps without the workspace project itself.
-RUN uv sync --frozen --no-install-project
+RUN uv sync --no-install-project
 
 # Now copy the workspace project sources and finalize the install.
 COPY src/ ./src/
-RUN uv sync --frozen
+RUN uv sync
 
 # ---------------------------------------------------------------------------
 # Stage 3: runtime
