@@ -7,8 +7,11 @@ from eth_account import Account
 from eth_account.messages import encode_typed_data
 
 from veritext.chain.borsh_schema import decode_memo
+from veritext.chain.protocol import ChainReceipt
 from veritext.chain.solana import SolanaChain
 from veritext.config.settings import get_settings
+from veritext.services import ProofBuilder
+from veritext.services.watermark_service import CombinedDetectResult
 
 
 DATA_HASH = "ab" * 32
@@ -332,3 +335,47 @@ async def test_solana_batch_hint_merkle_root_is_stored_in_memo(local_solana_env,
     assert receipt.merkle_root == merkle_root
     assert row["merkle_root"] == merkle_root
     assert memo.merkle_root == bytes.fromhex(merkle_root)
+
+
+@pytest.mark.asyncio
+async def test_solana_merkle_root_uses_merkle_anchor_metadata(local_solana_env, db_conn, monkeypatch):
+    merkle_root = "34" * 32
+
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    receipt = await chain.anchor(
+        data_hash=DATA_HASH,
+        issuer_id=42,
+        signature_hex=SIGNATURE_HEX,
+        batch_hint={"merkle_root": merkle_root},
+    )
+    row = await (await db_conn.execute("SELECT merkle_root FROM chain_blocks LIMIT 1")).fetchone()
+    bundle = await ProofBuilder(settings=get_settings()).build(
+        text_hash=DATA_HASH,
+        company={
+            "issuer_id": 42,
+            "name": "Merkle Co",
+            "eth_address": "0x0000000000000000000000000000000000000042",
+            "public_key_hex": "0x0000000000000000000000000000000000000042",
+        },
+        wm_detect=CombinedDetectResult(
+            present=False,
+            unicode={"detected": False, "tag_count": 0, "valid_count": 0, "invalid_count": 0},
+        ),
+        chain_receipt=ChainReceipt(**receipt.__dict__),
+        chain_backend_type="solana",
+        sig_scheme="eip712",
+        signature_hex=SIGNATURE_HEX,
+        timestamp=1_700_000_002,
+        bundle_nonce_hex="22" * 32,
+    )
+
+    assert row["merkle_root"] == merkle_root
+    assert bundle.anchors[0].type == "solana_merkle"
+    assert bundle.anchors[0].merkle_root == merkle_root
+    assert bundle.anchors[0].tx_hash == SOLANA_SIGNATURE
+    assert bundle.verification_hints.merkle_root == merkle_root
