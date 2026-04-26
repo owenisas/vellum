@@ -29,7 +29,13 @@ const highlighter = new Highlighter();
 let observer: MutationObserver | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastResult: ScanResultMessage | null = null;
+let lastSelectionText = "";
 let scanInFlight = false;
+
+const cleanSelectionText = (text: string): string =>
+  text
+    .replace(/\s*Vellum (?:watermark|verified|not verified)\s*/g, "")
+    .trim();
 
 const summarize = (meta: WatermarkMeta): ScanPayloadSummary => ({
   schemaVersion: meta.schemaVersion,
@@ -44,7 +50,14 @@ const summarize = (meta: WatermarkMeta): ScanPayloadSummary => ({
 
 const getSelectionText = (): string => {
   const selected = window.getSelection()?.toString() ?? "";
-  return selected.trim();
+  const trimmed = cleanSelectionText(selected);
+  if (trimmed) lastSelectionText = trimmed;
+  return trimmed || lastSelectionText;
+};
+
+const updateSelectionCache = (): void => {
+  const selected = cleanSelectionText(window.getSelection()?.toString() ?? "");
+  if (selected) lastSelectionText = selected;
 };
 
 const closestTextContainer = (node: Text): Element | null => {
@@ -105,6 +118,7 @@ const scanPage = (): ScanResultMessage => {
   // Pause the observer so highlight DOM mutations don't trigger another scan.
   observer?.disconnect();
   try {
+    const selectionText = getSelectionText();
     highlighter.clear();
 
     const root = document.body;
@@ -155,7 +169,7 @@ const scanPage = (): ScanResultMessage => {
       invalidCount,
       payloads: summaries,
       candidates,
-      selectionText: getSelectionText(),
+      selectionText,
       url: location.href,
     };
     publishResult(msg);
@@ -228,6 +242,9 @@ const handleMessage = (
 const start = (): void => {
   scanPage();
   attachObserver();
+  document.addEventListener("selectionchange", updateSelectionCache);
+  document.addEventListener("keyup", updateSelectionCache);
+  document.addEventListener("mouseup", updateSelectionCache);
   try {
     chrome.runtime.onMessage.addListener(handleMessage);
   } catch {

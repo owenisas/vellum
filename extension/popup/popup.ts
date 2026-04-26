@@ -20,7 +20,43 @@ interface GetStateResponse {
 const $ = <T extends Element = HTMLElement>(sel: string): T | null =>
   document.querySelector<T>(sel);
 
+const setStatusPill = (
+  text: string,
+  tone: "neutral" | "ok" | "bad" = "neutral",
+): void => {
+  const pill = $<HTMLElement>("#status-pill");
+  if (!pill) return;
+  pill.className = `status-pill ${tone === "neutral" ? "" : tone}`.trim();
+  pill.textContent = text;
+};
+
+const setModeInfo = (icon: string, title: string, desc: string): void => {
+  const iconEl = $<HTMLElement>("#mode-icon");
+  const titleEl = $<HTMLElement>("#mode-title");
+  const descEl = $<HTMLElement>("#mode-desc");
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (descEl) descEl.textContent = desc;
+};
+
+const setActiveAction = (
+  activeId: "scan-btn" | "verify-selection-btn" | null,
+): void => {
+  for (const id of ["scan-btn", "verify-selection-btn"]) {
+    $<HTMLButtonElement>(`#${id}`)?.classList.toggle("active", id === activeId);
+  }
+};
+
+const getRequestedTabId = (): number | null => {
+  const value = new URLSearchParams(location.search).get("tabId");
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 const getActiveTabId = async (): Promise<number | null> => {
+  const requestedTabId = getRequestedTabId();
+  if (requestedTabId !== null) return requestedTabId;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     return typeof tab?.id === "number" ? tab.id : null;
@@ -151,6 +187,14 @@ const renderVerification = (verification: VerificationState | null): void => {
   card.hidden = false;
   status.className = `verify-status ${verified ? "ok" : "bad"}`;
   status.textContent = label;
+  setStatusPill(verified ? "Verified" : "Check failed", verified ? "ok" : "bad");
+  setModeInfo(
+    verified ? "OK" : "!",
+    label,
+    verified
+      ? "This text hash is anchored in Vellum and matches the selected or detected paragraph."
+      : "The text could not be matched to an anchored Vellum proof. Check that the full signed text was pasted.",
+  );
   preview.textContent =
     result.error ?? response?.reason ?? verification.textPreview;
   grid.innerHTML = [
@@ -174,6 +218,16 @@ const renderState = (state: ScanState | null, url?: string): void => {
 
   if (!state || state.count === 0) {
     renderEmpty();
+    if (!state?.verification) {
+      setStatusPill(state?.invalidCount ? "Suspicious" : "Ready");
+      setModeInfo(
+        state?.invalidCount ? "!" : "V",
+        state?.invalidCount ? "Hidden data found" : "No watermark yet",
+        state?.invalidCount
+          ? "The page contains hidden watermark-like data, but the payload did not pass validation."
+          : "Select a pasted paragraph and use Verify selection, or scan again after pasting Vellum text.",
+      );
+    }
     if (state && state.invalidCount > 0) {
       const summary = $<HTMLElement>("#summary");
       const count = $<HTMLElement>("#summary-count");
@@ -207,6 +261,14 @@ const renderState = (state: ScanState | null, url?: string): void => {
     summaryInvalid.textContent =
       state.invalidCount > 0 ? `${state.invalidCount} invalid CRC` : "";
   }
+  if (!state.verification) {
+    setStatusPill(`${state.count} detected`, "ok");
+    setModeInfo(
+      "V",
+      "Watermark detected",
+      "Vellum payloads were found on this page. Verify a detected paragraph to confirm the ledger anchor.",
+    );
+  }
 
   for (const p of state.payloads) {
     const candidate = state.candidates.find(
@@ -232,6 +294,13 @@ const renderState = (state: ScanState | null, url?: string): void => {
       button.addEventListener("click", async () => {
         const tabId = await getActiveTabId();
         if (tabId === null) return;
+        setActiveAction(null);
+        setStatusPill("Checking");
+        setModeInfo(
+          "...",
+          "Checking detected text",
+          "Verifying the highlighted candidate against the configured Vellum endpoint.",
+        );
         button.disabled = true;
         button.textContent = "Verifying...";
         const verification = await verifyText(
@@ -274,6 +343,12 @@ const init = async (): Promise<void> => {
     renderEmpty();
     const subtitle = $<HTMLParagraphElement>("#page-url");
     if (subtitle) subtitle.textContent = "(no active tab)";
+    setStatusPill("Unavailable", "bad");
+    setModeInfo(
+      "!",
+      "No active tab",
+      "Open a normal web page with pasted Vellum text, then reopen the verifier.",
+    );
     return;
   }
 
@@ -286,20 +361,30 @@ const init = async (): Promise<void> => {
   select?.addEventListener("change", async () => {
     if (select.value === "custom") {
       if (custom) custom.hidden = false;
+      setModeInfo(
+        "API",
+        "Custom endpoint",
+        "Enter the Vellum app URL to use for verification requests.",
+      );
       return;
     }
     const saved = await saveApiBaseUrl(select.value);
     applyEndpointUi(saved);
+    setModeInfo("API", "Endpoint saved", `Verification will use ${saved}.`);
   });
   custom?.addEventListener("change", async () => {
     const saved = await saveApiBaseUrl(custom.value);
     applyEndpointUi(saved);
+    setModeInfo("API", "Endpoint saved", `Verification will use ${saved}.`);
   });
 
   const scanBtn = $<HTMLButtonElement>("#scan-btn");
   scanBtn?.addEventListener("click", async () => {
+    setActiveAction("scan-btn");
+    setStatusPill("Scanning");
+    setModeInfo("...", "Scanning page", "Looking for Vellum zero-width payloads in visible page text.");
     scanBtn.disabled = true;
-    scanBtn.textContent = "Scanning…";
+    scanBtn.textContent = "Scanning...";
     const fresh = await requestRescan(tabId);
     renderState(fresh);
     scanBtn.disabled = false;
@@ -308,6 +393,13 @@ const init = async (): Promise<void> => {
 
   const selectionBtn = $<HTMLButtonElement>("#verify-selection-btn");
   selectionBtn?.addEventListener("click", async () => {
+    setActiveAction("verify-selection-btn");
+    setStatusPill("Checking");
+    setModeInfo(
+      "...",
+      "Checking selection",
+      "Reading the selected text from the active tab and asking Vellum to verify its hash.",
+    );
     selectionBtn.disabled = true;
     selectionBtn.textContent = "Checking...";
     const fresh = await requestRescan(tabId);

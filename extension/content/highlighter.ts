@@ -21,28 +21,40 @@ const BADGE_CLASS = "vellum-badge";
 
 const STYLE_CSS = `
 .${DETECTED_CLASS} {
-  background: rgba(34, 197, 94, 0.18);
-  border-bottom: 2px solid rgb(34, 197, 94);
+  background: rgba(125, 211, 252, 0.18) !important;
+  outline: 2px solid rgba(125, 211, 252, 0.8) !important;
+  outline-offset: 1px;
+  border-radius: 3px;
+  transition: background 0.15s ease, outline-color 0.15s ease;
 }
 .${DETECTED_CLASS}.vellum-verified {
-  background: rgba(37, 99, 235, 0.18);
-  border-bottom-color: rgb(37, 99, 235);
+  background: rgba(34, 197, 94, 0.22) !important;
+  outline-color: rgba(34, 197, 94, 0.95) !important;
 }
 .${DETECTED_CLASS}.vellum-unverified {
-  background: rgba(220, 38, 38, 0.14);
-  border-bottom-color: rgb(220, 38, 38);
+  background: rgba(239, 68, 68, 0.18) !important;
+  outline-color: rgba(239, 68, 68, 0.95) !important;
 }
 .${BADGE_CLASS} {
   display: inline-block;
-  margin-left: 4px;
-  color: rgb(22, 163, 74);
-  font-weight: bold;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.65);
+  background: rgba(15, 23, 42, 0.92);
+  color: rgb(125, 211, 252);
+  font: 700 11px/1.2 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  vertical-align: baseline;
+  user-select: none !important;
 }
 .${BADGE_CLASS}.vellum-verified {
-  color: rgb(37, 99, 235);
+  border-color: rgba(34, 197, 94, 0.75);
+  color: rgb(187, 247, 208);
 }
 .${BADGE_CLASS}.vellum-unverified {
-  color: rgb(220, 38, 38);
+  border-color: rgba(239, 68, 68, 0.75);
+  color: rgb(254, 202, 202);
 }
 `.trim();
 
@@ -72,12 +84,12 @@ export class Highlighter {
       );
       // Ensure the node is still attached to the document.
       if (!node.parentNode) continue;
+      const parent = node.parentElement;
 
       for (const m of sorted) {
         this.wrapRange(node, m);
       }
 
-      const parent = node.parentElement;
       if (parent && !badgedParents.has(parent)) {
         this.appendBadge(parent);
         badgedParents.add(parent);
@@ -190,6 +202,7 @@ export class Highlighter {
     badge.className = BADGE_CLASS;
     badge.textContent = "Vellum watermark";
     badge.title = "Vellum watermark detected";
+    badge.setAttribute("aria-hidden", "true");
     parent.appendChild(badge);
   }
 }
