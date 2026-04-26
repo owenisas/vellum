@@ -44,6 +44,8 @@ jobs:
       DO_BRANCH: ${{ github.ref_name }}
       DO_APP_ID: ${{ inputs.app_id || vars.DIGITALOCEAN_APP_ID }}
       DO_APP_NAME: ${{ inputs.app_name || 'vellum' }}
+      DO_WALLET_PROOFS_APP_ID: ${{ vars.DIGITALOCEAN_WALLET_PROOFS_APP_ID }}
+      DO_WALLET_PROOFS_APP_NAME: ${{ vars.DIGITALOCEAN_WALLET_PROOFS_APP_NAME || 'vellum-wallet-proofs' }}
       DIGITALOCEAN_REGISTRY_NAME: ${{ vars.DIGITALOCEAN_REGISTRY_NAME }}
       DEMO_MODE: ${{ vars.DEMO_MODE || 'live' }}
       CHAIN_BACKEND: ${{ vars.CHAIN_BACKEND || 'simulated' }}
@@ -121,8 +123,9 @@ jobs:
           from pathlib import Path
           import os
 
-          replacements = {
-              "__APP_NAME__": os.environ.get("DO_APP_NAME", "vellum"),
+          template = Path(".do/app.yaml.template").read_text()
+
+          common = {
               "__DO_REGISTRY_NAME__": os.environ["DO_REGISTRY_NAME"],
               "__IMAGE_TAG__": os.environ["IMAGE_TAG"],
               "__DEMO_MODE__": os.environ.get("DEMO_MODE", "live"),
@@ -137,10 +140,18 @@ jobs:
               "__MINIMAX_API_KEY__": os.environ.get("MINIMAX_API_KEY", ""),
           }
 
-          spec = Path(".do/app.yaml.template").read_text()
-          for key, value in replacements.items():
-              spec = spec.replace(key, value)
-          Path(".do/app.generated.yaml").write_text(spec)
+          def render(path: str, app_name: str) -> None:
+              spec = template.replace("__APP_NAME__", app_name)
+              for key, value in common.items():
+                  spec = spec.replace(key, value)
+              Path(path).write_text(spec)
+
+          render(".do/app.generated.yaml", os.environ.get("DO_APP_NAME", "vellum"))
+          if os.environ.get("DO_WALLET_PROOFS_APP_ID"):
+              render(
+                  ".do/app.wallet-proofs.generated.yaml",
+                  os.environ.get("DO_WALLET_PROOFS_APP_NAME", "vellum-wallet-proofs"),
+              )
           PY
 
       - name: Deploy app
@@ -152,3 +163,8 @@ jobs:
           else
             doctl apps create --spec .do/app.generated.yaml --wait --format ID,DefaultIngress --no-header
           fi
+
+      - name: Deploy wallet proofs app
+        if: github.event_name == 'push' && env.DO_WALLET_PROOFS_APP_ID != ''
+        run: |
+          doctl apps update "${DO_WALLET_PROOFS_APP_ID}" --spec .do/app.wallet-proofs.generated.yaml --wait
