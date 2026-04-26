@@ -37,7 +37,8 @@ FROM python:3.12-slim AS backend
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/app/.venv
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -74,4 +75,4 @@ EXPOSE 5050
 
 # WARNING: do not bake secrets into the image. Pass env at runtime, e.g.
 #   docker run --env-file .env -v $(pwd)/data:/app/data vellum
-CMD ["uv", "run", "uvicorn", "vellum.app:app", "--host", "0.0.0.0", "--port", "5050"]
+CMD ["uvicorn", "vellum.app:app", "--host", "0.0.0.0", "--port", "5050"]
