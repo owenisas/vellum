@@ -14,7 +14,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[veritext]", this.state.errorId, error, info.componentStack);
+    console.error("[vellum]", this.state.errorId, error, info.componentStack);
   }
 
   render() {

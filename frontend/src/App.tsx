@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { useRouteDocumentTitle } from "./hooks/useRouteDocumentTitle";
 import { AppShell } from "./layout/AppShell";
 import { Cover } from "./pages/Cover";
 import { Studio } from "./pages/Studio";
@@ -9,6 +10,7 @@ import { Ledger } from "./pages/Ledger";
 import { Principles } from "./pages/Principles";
 
 export default function App() {
+  useRouteDocumentTitle();
   const location = useLocation();
   return (
     <ErrorBoundary>

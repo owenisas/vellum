@@ -88,7 +88,7 @@ export function StageProve({ flow }: { flow: StudioFlow }) {
           <h3 className={proveStyles.publicHead}>Verify any paragraph, from anywhere.</h3>
           <p className={proveStyles.publicBody}>
             Paste any text into the verifier — no account, no login. If a
-            Veritext signature is present and the registry recognizes it, you
+            Vellum signature is present and the registry recognizes it, you
             see who signed it and when.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function StageProve({ flow }: { flow: StudioFlow }) {
         <div className={proveStyles.drawer}>
           <p className={proveStyles.drawerLead}>
             Paste any text. We&apos;ll hash it, look it up in the public ledger,
-            and report whether it carries a known Veritext signature.
+            and report whether it carries a known Vellum signature.
           </p>
           <textarea
             className={styles.prompt}

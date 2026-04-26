@@ -26,6 +26,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.surface = surface;
   }, [surface]);
+  useEffect(() => {
+    const meta = document.querySelector("meta[name=\"theme-color\"]");
+    if (meta) meta.setAttribute("content", surface === "paper" ? "#F5F4EE" : "#0A0A0A");
+  }, [surface]);
   return (
     <>
       <SmoothScroll />

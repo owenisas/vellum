@@ -27,7 +27,6 @@
   color: var(--fg);
   max-width: 28ch;
 }
-.ticker { margin-top: var(--s-2); }
 .colHead {
   font-family: var(--font-sans);
   font-size: 0.6875rem;

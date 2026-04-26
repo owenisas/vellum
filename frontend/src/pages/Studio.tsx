@@ -186,7 +186,7 @@ export function Studio() {
               <Button variant="ghost" size="sm" onClick={() => downloadText("text.txt", generatedText)}>
                 text.txt
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => copy("veritext-verify --bundle ./bundle.json --text ./text.txt")}>
+              <Button variant="ghost" size="sm" onClick={() => copy("vellum verify --bundle ./bundle.json --text ./text.txt")}>
                 copy CLI
               </Button>
               {explorerUrl && (

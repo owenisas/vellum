@@ -23,7 +23,7 @@ export function Principles() {
           {"What we believe,\nand why."}
         </DisplayHeading>
         <p className={styles.lede}>
-          Veritext is not a watermark for catching cheaters. It is a quiet
+          Vellum is not a watermark for catching cheaters. It is a quiet
           piece of infrastructure that lets a sentence carry its origin
           everywhere it goes.
         </p>
@@ -107,7 +107,7 @@ export function Principles() {
           subtitle="Open, durable, never extractive."
         >
           <p>
-            Veritext is a public good wearing the clothes of a startup. The
+            Vellum is a public good wearing the clothes of a startup. The
             verifier will always be free, the bundles will always be
             inspectable offline, and the registry will always be open.
             Issuers pay the cost of anchoring; readers pay nothing.

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { LiveTicker } from "../components/ui/LiveTicker";
 import styles from "./Footer.module.css";
 
 export function Footer() {
@@ -8,11 +7,10 @@ export function Footer() {
     <footer className={styles.foot}>
       <div className={styles.inner}>
         <div className={styles.col}>
-          <span className={styles.brand}>VERITEXT</span>
+          <span className={styles.brand}>VELLUM</span>
           <p className={styles.tag}>
             Cryptographic provenance for every sentence a machine writes.
           </p>
-          <LiveTicker verbose className={styles.ticker} />
         </div>
         <div className={styles.col}>
           <span className={styles.colHead}>Product</span>
