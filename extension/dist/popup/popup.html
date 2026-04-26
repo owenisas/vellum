@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=320, initial-scale=1" />
+    <title>Vellum Watermark Detector</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Vellum</p>
+          <h1 class="title">Provenance verifier</h1>
+        </div>
+        <span class="status-pill" id="status-pill">Idle</span>
+      </header>
+      <p class="subtitle" id="page-url">Loading active tab...</p>
+
+      <section class="segment" aria-label="Verifier actions">
+        <button type="button" class="seg-btn active" id="scan-btn">
+          Scan page
+        </button>
+        <button type="button" class="seg-btn" id="verify-selection-btn">
+          Verify selection
+        </button>
+      </section>
+
+      <section class="mode-info-box" id="mode-info">
+        <div class="mi-icon" id="mode-icon">V</div>
+        <div>
+          <div class="mi-title" id="mode-title">Ready to scan</div>
+          <div class="mi-desc" id="mode-desc">
+            Paste Vellum text into a page, then scan or select the paragraph and verify it.
+          </div>
+        </div>
+      </section>
+
+      <section class="settings">
+        <label class="field-label" for="api-base-url">Verifier endpoint</label>
+        <select id="api-base-url" class="select">
+          <option value="https://vellum-387oq.ondigitalocean.app">Public demo</option>
+          <option value="https://vellum-auth0-ttohk.ondigitalocean.app">Auth0 demo</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input
+          id="custom-api-base-url"
+          class="input"
+          type="url"
+          placeholder="https://your-vellum-app.example"
+          hidden
+        />
+      </section>
+
+      <section class="summary" id="summary" hidden>
+        <span class="summary-count" id="summary-count">0</span>
+        <span class="summary-label">watermark(s) detected</span>
+        <span class="summary-invalid" id="summary-invalid"></span>
+      </section>
+
+      <section class="verify-card" id="verify-card" hidden>
+        <div class="verify-status" id="verify-status"></div>
+        <p class="verify-preview" id="verify-preview"></p>
+        <dl class="proof-grid" id="proof-grid"></dl>
+      </section>
+
+      <section class="results" id="results">
+        <p class="empty" id="empty-state">
+          No Vellum watermark detected yet. Select the pasted paragraph on the page,
+          then click <strong>Verify selection</strong>.
+        </p>
+        <ul class="result-list" id="result-list" hidden></ul>
+      </section>
+    </main>
+
+    <template id="result-item-template">
+      <li class="result-item">
+        <div class="result-row">
+          <span class="result-label">issuer</span>
+          <span class="result-value" data-field="issuerId"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">model</span>
+          <span class="result-value" data-field="modelId"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">payload</span>
+          <code class="result-value" data-field="rawPayloadHex"></code>
+        </div>
+        <p class="candidate-preview" data-field="preview"></p>
+        <button type="button" class="btn btn-mini" data-action="verify-candidate">
+          Verify this text
+        </button>
+      </li>
+    </template>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

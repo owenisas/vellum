@@ -15,11 +15,12 @@ htmlcov/
 *.egg-info/
 build/
 dist/
+!extension/dist/
+!extension/dist/**
 
 # Node
 node_modules/
 frontend/dist/
-extension/dist/
 *.tsbuildinfo
 *.log
 
