@@ -309,6 +309,20 @@ async def test_solana_rejects_short_data_hash_before_local_write(local_solana_en
 
 
 @pytest.mark.asyncio
+async def test_solana_rejects_bad_signature_prefix_before_local_write(local_solana_env, db_conn):
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    with pytest.raises(ValueError, match="non-hexadecimal number"):
+        await chain.anchor(
+            data_hash=DATA_HASH,
+            issuer_id=42,
+            signature_hex="not-a-hex-signature",
+        )
+
+    assert await chain.count() == 0
+
+
+@pytest.mark.asyncio
 async def test_solana_batch_hint_merkle_root_is_stored_in_memo(local_solana_env, db_conn, monkeypatch):
     merkle_root = "12" * 32
 
