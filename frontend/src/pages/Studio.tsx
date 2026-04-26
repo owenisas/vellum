@@ -23,7 +23,7 @@ import { StageProve } from "./studio/StageProve";
 import type { AnchorResponse, VerifyResponse, WalletProof } from "../api/types";
 import styles from "./Studio.module.css";
 
-const DEFAULT_PROMPT = "[demo prompt] Explain why text provenance matters for AI-generated content.";
+const DEFAULT_PROMPT = "";
 
 function downloadJson(filename: string, obj: unknown) {
   trigger(filename, new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }));

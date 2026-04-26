@@ -128,9 +128,9 @@ async def auto_register(
 async def sample_prompts() -> dict[str, list[str]]:
     return {
         "prompts": [
-            "[demo prompt] Explain how content provenance works.",
-            "[demo prompt] Explain why authenticated AI agent actions matter.",
-            "[demo prompt] Explain how browser wallets prove provenance.",
+            "[placeholder prompt] Explain how content provenance works.",
+            "[placeholder prompt] Explain why authenticated AI agent actions matter.",
+            "[placeholder prompt] Explain how browser wallets prove provenance.",
         ]
     }
 

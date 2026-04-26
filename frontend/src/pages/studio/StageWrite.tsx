@@ -19,11 +19,14 @@ async function sha256Hex(text: string): Promise<string> {
     .join("");
 }
 
+const PLACEHOLDER_PROMPT_PREFIX = "[placeholder prompt]";
 const SAMPLE_PROMPTS = [
-  "[demo prompt] Explain how content provenance works.",
-  "[demo prompt] Explain why authenticated AI agent actions matter.",
-  "[demo prompt] Explain how browser wallets prove provenance.",
+  `${PLACEHOLDER_PROMPT_PREFIX} Explain how content provenance works.`,
+  `${PLACEHOLDER_PROMPT_PREFIX} Explain why authenticated AI agent actions matter.`,
+  `${PLACEHOLDER_PROMPT_PREFIX} Explain how browser wallets prove provenance.`,
 ];
+const isPlaceholderPrompt = (prompt: string): boolean =>
+  prompt.trim().startsWith(PLACEHOLDER_PROMPT_PREFIX);
 
 export function StageWrite({ flow }: { flow: StudioFlow }) {
   const [busy, setBusy] = useState(false);
@@ -45,6 +48,7 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
     ...(providerModels.google.length ? ["google" as const] : []),
     "fixture" as const,
   ];
+  const defaultGoogleModel = providerModels.google[0]?.id ?? "gemma-4-31b-it";
 
   useEffect(() => {
     if (models.isLoading) return;
@@ -55,9 +59,9 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
     }
     if (flow.provider === "google" && providerModels.google.length > 0) {
       const currentExists = providerModels.google.some((m) => m.id === flow.model);
-      if (!currentExists) flow.setModel(providerModels.google[0].id);
+      if (!currentExists) flow.setModel(defaultGoogleModel);
     }
-  }, [flow, models.isLoading, providerModels.google]);
+  }, [defaultGoogleModel, flow, models.isLoading, providerModels.google]);
 
   const onGenerate = async () => {
     setBusy(true);
@@ -71,9 +75,15 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
     flow.setRawText("");
     flow.setWalletProofs([]);
     try {
+      const placeholder = isPlaceholderPrompt(flow.prompt);
+      const requestProvider = placeholder ? "fixture" : flow.provider;
+      if (placeholder) {
+        flow.setProvider("fixture");
+        flow.setModel("fixture");
+      }
       const res = await generate.mutateAsync({
-        provider: flow.provider,
-        model: flow.provider === "fixture" ? undefined : flow.model,
+        provider: requestProvider,
+        model: requestProvider === "fixture" ? undefined : flow.model,
         messages: [{ role: "user", content: flow.prompt }],
         max_tokens: 256,
         temperature: 0.2,
@@ -135,7 +145,7 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
                   active={flow.provider === "google"}
                   onClick={() => {
                     flow.setProvider("google");
-                    flow.setModel(providerModels.google[0]?.id ?? "gemma-4-31b-it");
+                    flow.setModel(defaultGoogleModel);
                   }}
                 >Google · Gemma</Pill>
               )}
@@ -164,8 +174,15 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
           className={styles.prompt}
           rows={3}
           value={flow.prompt}
-          onChange={(e) => flow.setPrompt(e.target.value)}
-          placeholder="Tell us what you want to make…"
+          onChange={(e) => {
+            const next = e.target.value;
+            flow.setPrompt(next);
+            if (!isPlaceholderPrompt(next) && providerModels.google.length > 0) {
+              flow.setProvider("google");
+              flow.setModel(defaultGoogleModel);
+            }
+          }}
+          placeholder="Type your own prompt here to call Gemma 4 31B…"
         />
 
         <div className={styles.suggestions}>
@@ -176,7 +193,11 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
                 key={i}
                 type="button"
                 className={styles.suggestion}
-                onClick={() => flow.setPrompt(p)}
+                onClick={() => {
+                  flow.setPrompt(p);
+                  flow.setProvider("fixture");
+                  flow.setModel("fixture");
+                }}
               >&ldquo;{p.slice(0, 110)}{p.length > 110 ? "…" : ""}&rdquo;</button>
             ))}
           </div>
