@@ -1,5 +1,9 @@
+import base64
+import json
+
 import pytest
 
+from veritext.chain.borsh_schema import decode_memo
 from veritext.chain.solana import SolanaChain
 from veritext.config.settings import get_settings
 
@@ -52,3 +56,28 @@ async def test_solana_rpc_failure_falls_back_to_local_anchor(local_solana_env, d
     assert len(receipt.tx_hash) == 64
     assert receipt.solana_tx_signature is None
     assert latest.solana_tx_signature is None
+
+
+@pytest.mark.asyncio
+async def test_solana_memo_payload_is_stored(local_solana_env, db_conn, monkeypatch):
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    await chain.anchor(
+        data_hash=DATA_HASH,
+        issuer_id=99,
+        signature_hex=SIGNATURE_HEX,
+    )
+
+    cur = await db_conn.execute("SELECT payload_json FROM chain_blocks ORDER BY block_num DESC LIMIT 1")
+    row = await cur.fetchone()
+    payload = json.loads(row["payload_json"])
+    memo = decode_memo(base64.b64decode(payload["memo_b64"]))
+
+    assert memo.data_hash.hex() == DATA_HASH
+    assert memo.issuer_id == 99
+    assert memo.sig_prefix == bytes.fromhex(SIGNATURE_HEX)[:20]
+    assert memo.merkle_root is None
