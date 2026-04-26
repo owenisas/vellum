@@ -8,7 +8,6 @@ from vellum.chain.protocol import ChainReceipt
 from vellum.config import ChainBackendType
 from vellum.services.proof_builder import ProofBundleBuilder
 
-
 COMPANY = {
     "issuer_id": 42,
     "name": "Acme AI",
@@ -101,6 +100,30 @@ def test_solana_bundle_includes_explorer_url():
     assert "explorer.solana.com" in hints["explorer_url"]
     assert "devnet" in hints["explorer_url"]
     assert hints["explorer_url"].endswith("?cluster=devnet")
+
+
+def test_solana_bundle_without_signature_marks_local_fallback():
+    builder = ProofBundleBuilder(
+        ChainBackendType.SOLANA,
+        solana_cluster="localnet",
+        solana_rpc_url="http://local-solana-rpc.invalid",
+    )
+    bundle = builder.build(
+        receipt=_receipt(solana_sig=None),
+        company=COMPANY,
+        watermark=_empty_watermark(),
+        signature_hex=SIG,
+    )
+
+    anchor = bundle["anchors"][0]
+    hints = bundle["verification_hints"]
+
+    assert anchor["type"] == "solana_local_fallback"
+    assert anchor["tx_hash"] == "a" * 64
+    assert anchor["network"] == "solana-localnet"
+    assert hints["chain_type"] == "solana_local_fallback"
+    assert hints["cluster"] == "localnet"
+    assert hints["explorer_url"] is None
 
 
 def test_bundle_id_deterministic():

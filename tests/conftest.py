@@ -15,7 +15,6 @@ import pytest_asyncio
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Settings / env management
 # ---------------------------------------------------------------------------
@@ -44,6 +43,33 @@ def settings_env(tmp_path, monkeypatch):
     reload_settings()
 
 
+@pytest.fixture
+def local_solana_env(tmp_path, monkeypatch):
+    """Force Solana mode against isolated SQLite and mocked/local RPC only."""
+    db_path = tmp_path / "solana-test.db"
+    keypair_path = tmp_path / "solana-keypair.json"
+    keypair_path.write_text("[]", encoding="utf-8")
+
+    monkeypatch.setenv("DEMO_MODE", "fixture")
+    monkeypatch.setenv("AUTH0_DOMAIN", "")
+    monkeypatch.setenv("CHAIN_BACKEND", "solana")
+    monkeypatch.setenv("DB_PATH", str(db_path))
+    monkeypatch.setenv("REGISTRY_ADMIN_SECRET", "dev-admin-secret")
+    monkeypatch.setenv("LOG_FORMAT", "pretty")
+    monkeypatch.setenv("LOG_LEVEL", "warning")
+    monkeypatch.setenv("GOOGLE_API_KEY", "")
+    monkeypatch.setenv("MINIMAX_API_KEY", "")
+    monkeypatch.setenv("SOLANA_KEYPAIR_PATH", str(keypair_path))
+    monkeypatch.setenv("SOLANA_RPC_URL", "http://local-solana-rpc.invalid")
+    monkeypatch.setenv("SOLANA_CLUSTER", "localnet")
+
+    from vellum.config.settings import reload_settings
+
+    settings = reload_settings()
+    yield settings
+    reload_settings()
+
+
 # ---------------------------------------------------------------------------
 # FastAPI app + httpx client
 # ---------------------------------------------------------------------------
@@ -59,6 +85,18 @@ async def client(settings_env):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
+
+
+@pytest_asyncio.fixture
+async def solana_client(local_solana_env):
+    """An httpx.AsyncClient bound to a Solana-mode FastAPI app."""
+    from vellum.app import create_app
+
+    app = create_app()
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c, app
 
 
 # ---------------------------------------------------------------------------

@@ -50,25 +50,40 @@ class ProofBundleBuilder:
             "payloads": watermark_payloads,
         }
 
-        if self.chain_backend == ChainBackendType.SOLANA and receipt.solana_tx_signature:
-            anchors = [
-                {
-                    "type": "solana",
-                    "network": f"solana-{self.solana_cluster}",
-                    "tx_signature": receipt.solana_tx_signature,
-                    "block_num": receipt.block_num,
-                    "timestamp": receipt.timestamp,
-                    "data_hash": text_hash,
-                }
-            ]
-            verification_hints = {
-                "chain_type": "solana",
-                "cluster": self.solana_cluster,
-                "rpc_urls": [self.solana_rpc_url],
-                "explorer_url": (
+        if self.chain_backend == ChainBackendType.SOLANA:
+            if receipt.solana_tx_signature:
+                anchors = [
+                    {
+                        "type": "solana",
+                        "network": f"solana-{self.solana_cluster}",
+                        "tx_signature": receipt.solana_tx_signature,
+                        "block_num": receipt.block_num,
+                        "timestamp": receipt.timestamp,
+                        "data_hash": text_hash,
+                    }
+                ]
+                explorer_url = (
                     f"https://explorer.solana.com/tx/{receipt.solana_tx_signature}"
                     f"?cluster={self.solana_cluster}"
-                ),
+                )
+            else:
+                anchors = [
+                    {
+                        "type": "solana_local_fallback",
+                        "network": f"solana-{self.solana_cluster}",
+                        "tx_hash": receipt.tx_hash,
+                        "block_num": receipt.block_num,
+                        "timestamp": receipt.timestamp,
+                        "data_hash": text_hash,
+                    }
+                ]
+                explorer_url = None
+
+            verification_hints = {
+                "chain_type": anchors[0]["type"],
+                "cluster": self.solana_cluster,
+                "rpc_urls": [self.solana_rpc_url],
+                "explorer_url": explorer_url,
                 "memo_program": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
             }
         else:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from vellum.db.connection import get_db, init_db
 
@@ -18,7 +18,7 @@ GENESIS_PREV_HASH = "0" * 64
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _build_memo(data_hash: str, issuer_id: int, signature_hex: str, timestamp: str) -> str:
@@ -32,6 +32,14 @@ def _build_memo(data_hash: str, issuer_id: int, signature_hex: str, timestamp: s
         },
         separators=(",", ":"),
     )
+
+
+def _validate_hash_and_signature(data_hash: str, signature_hex: str) -> None:
+    data_hash_bytes = bytes.fromhex(data_hash.removeprefix("0x"))
+    if len(data_hash_bytes) != 32:
+        raise ValueError("data_hash must be 32 bytes")
+
+    bytes.fromhex(signature_hex.removeprefix("0x"))
 
 
 class SolanaChain(ChainBackend):
@@ -146,11 +154,15 @@ class SolanaChain(ChainBackend):
         signature_hex: str,
         metadata: dict | None = None,
     ) -> ChainReceipt:
+        _validate_hash_and_signature(data_hash, signature_hex)
         await self.initialize()
 
         timestamp = _utcnow()
         memo = _build_memo(data_hash, issuer_id, signature_hex, timestamp)
         solana_sig = await self._send_memo(memo)
+        payload = dict(metadata or {})
+        payload.setdefault("solana_memo", json.loads(memo))
+        payload.setdefault("solana_local_fallback", solana_sig is None)
 
         prev_hash = await self._latest_tx_hash()
         local_tx = _compute_tx_hash(prev_hash, data_hash, issuer_id, timestamp)
@@ -170,7 +182,7 @@ class SolanaChain(ChainBackend):
                     data_hash,
                     issuer_id,
                     signature_hex,
-                    json.dumps(metadata or {}),
+                    json.dumps(payload),
                     timestamp,
                     solana_sig,
                 ),
