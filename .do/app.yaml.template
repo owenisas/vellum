@@ -8,7 +8,7 @@ services:
       registry: "__DO_REGISTRY_NAME__"
       repository: vellum
       tag: "__IMAGE_TAG__"
-    run_command: uvicorn vellum.app:app --host 0.0.0.0 --port ${PORT:-8080}
+    run_command: uv run uvicorn vellum.app:app --host 0.0.0.0 --port ${PORT:-8080}
     http_port: 8080
     instance_count: 1
     instance_size_slug: basic-xxs
