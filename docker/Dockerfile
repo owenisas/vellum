@@ -48,6 +48,7 @@ RUN apt-get update \
 
 # Copy lockfile + manifests first so layers cache when only source changes.
 COPY pyproject.toml ./
+COPY README.md ./
 COPY uv.lock* ./
 COPY packages/ ./packages/
 
