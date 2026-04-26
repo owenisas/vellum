@@ -74,6 +74,33 @@ async def test_solana_anchor_persists_local_block(local_solana_env, db_conn, mon
 
 
 @pytest.mark.asyncio
+async def test_solana_local_hash_chain_links_blocks(local_solana_env, db_conn, monkeypatch):
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    receipts = []
+    for idx in range(3):
+        receipts.append(
+            await chain.anchor(
+                data_hash=f"{idx + 1:064x}",
+                issuer_id=42,
+                signature_hex=SIGNATURE_HEX,
+            )
+        )
+
+    blocks = await chain.list_blocks(limit=10, offset=0)
+    blocks = sorted(blocks, key=lambda block: block.block_num)
+    assert [block.block_num for block in blocks] == [0, 1, 2]
+    assert [block.tx_hash for block in blocks] == [receipt.tx_hash for receipt in receipts]
+    assert blocks[0].prev_hash == "0" * 64
+    assert blocks[1].prev_hash == blocks[0].tx_hash
+    assert blocks[2].prev_hash == blocks[1].tx_hash
+
+
+@pytest.mark.asyncio
 async def test_solana_rpc_failure_falls_back_to_local_anchor(local_solana_env, db_conn, monkeypatch):
     async def fail_post_memo(self, memo_bytes):
         raise RuntimeError("rpc unavailable")
