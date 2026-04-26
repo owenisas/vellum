@@ -28,7 +28,7 @@ class ChatService:
 
     async def generate(self, request: ChatRequest) -> ChatResponse:
         provider = "fixture" if self.fixture_mode else (request.provider or self.router.settings.default_provider.value)
-        model = request.model or self.router.settings.default_model
+        model = request.model or ("fixture-default" if provider == "fixture" else self.router.settings.default_model)
         gen_req = GenerateRequest(
             model=model,
             messages=[m.model_dump() for m in request.messages],

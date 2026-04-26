@@ -26,6 +26,8 @@ async def test_chat_returns_watermarked_text(client):
     assert data["raw_text"]
     assert data["text"] != data["raw_text"]
     assert data["provider"] == "fixture"
+    assert data["model"] == "fixture-default"
+    assert "Placeholder response for the demo" in data["raw_text"]
 
 
 async def test_detect_finds_watermark(client):

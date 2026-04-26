@@ -21,6 +21,7 @@ async def test_fixture_provider_deterministic():
     b = await provider.generate(_request("identical prompt"))
 
     assert a.text == b.text
+    assert "Placeholder response for the demo" in a.text
     assert a.usage == b.usage
     assert a.provider == "fixture"
     assert a.model == "fixture-default"

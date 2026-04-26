@@ -6,10 +6,10 @@ from .base import GenerateRequest, GenerateResponse
 
 
 FIXTURE_TEXT = (
-    "Vellum fixture response: this output is deterministic for demo reliability. "
-    "It can be watermarked, signed, anchored, and verified without calling external "
-    "model APIs. The pipeline runs end-to-end exactly the same way it does with a "
-    "real provider. Use this mode when you want a reproducible artifact."
+    "Placeholder response for the demo: this deterministic text stands in for a "
+    "model answer when you click a Try one prompt. It can still be watermarked, "
+    "signed, anchored, and verified, but it does not call Google or any external "
+    "model API. Type your own prompt to use the real Gemma 4 31B path."
 )
 
 
