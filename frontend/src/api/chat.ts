@@ -12,7 +12,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const chatApi = {
   models: () => get<ModelsResponse>("/api/models"),
-  generate: (req: ChatRequest) => post<ChatResponse>("/api/chat", req),
+  generate: (req: ChatRequest) =>
+    post<ChatResponse>("/api/chat", req, { timeout: 120_000 }),
   detect: (text: string, wm_params?: WmParams) =>
     post<DetectResponse>("/api/detect", { text, wm_params }),
   strip: (text: string) => post<StripResponse>("/api/strip", { text }),

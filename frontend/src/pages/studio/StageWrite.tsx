@@ -75,6 +75,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
         provider: flow.provider,
         model: flow.provider === "fixture" ? undefined : flow.model,
         messages: [{ role: "user", content: flow.prompt }],
+        max_tokens: 256,
+        temperature: 0.2,
         watermark: true,
         wm_params: flow.issuerId
           ? { issuer_id: Number(flow.issuerId), model_id: 1, model_version_id: 1, key_id: 1 }
