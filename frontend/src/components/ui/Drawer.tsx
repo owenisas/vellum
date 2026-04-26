@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ease } from "../../lib/motion";
 import styles from "./Drawer.module.css";
 
@@ -23,7 +24,7 @@ export function Drawer({ open, onClose, side = "right", title, children }: Props
     };
   }, [open, onClose]);
 
-  return (
+  const drawer = (
     <AnimatePresence>
       {open && (
         <motion.div
@@ -55,4 +56,7 @@ export function Drawer({ open, onClose, side = "right", title, children }: Props
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(drawer, document.body);
 }
