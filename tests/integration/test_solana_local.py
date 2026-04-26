@@ -262,3 +262,46 @@ async def test_proof_bundle_labels_solana_fallback_as_local(solana_app_client, m
     assert anchor["type"] == "solana_local_fallback"
     assert anchor["tx_hash"] == body["chain_receipt"]["tx_hash"]
     assert body["proof_bundle_v2"]["verification_hints"]["explorer_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_solana_rejects_short_data_hash_before_local_write(local_solana_env, db_conn):
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    with pytest.raises(ValueError, match="data_hash must be 32 bytes"):
+        await chain.anchor(
+            data_hash="aa" * 31,
+            issuer_id=42,
+            signature_hex=SIGNATURE_HEX,
+        )
+
+    assert await chain.count() == 0
+
+
+@pytest.mark.asyncio
+async def test_solana_batch_hint_merkle_root_is_stored_in_memo(local_solana_env, db_conn, monkeypatch):
+    merkle_root = "12" * 32
+
+    async def fake_post_memo(self, memo_bytes):
+        return SOLANA_SIGNATURE
+
+    monkeypatch.setattr(SolanaChain, "_post_memo", fake_post_memo)
+    chain = SolanaChain(settings=get_settings(), db_conn=db_conn)
+
+    receipt = await chain.anchor(
+        data_hash=DATA_HASH,
+        issuer_id=42,
+        signature_hex=SIGNATURE_HEX,
+        batch_hint={"merkle_root": merkle_root},
+    )
+
+    cur = await db_conn.execute(
+        "SELECT payload_json, merkle_root FROM chain_blocks ORDER BY block_num DESC LIMIT 1"
+    )
+    row = await cur.fetchone()
+    payload = json.loads(row["payload_json"])
+    memo = decode_memo(base64.b64decode(payload["memo_b64"]))
+
+    assert receipt.merkle_root == merkle_root
+    assert row["merkle_root"] == merkle_root
+    assert memo.merkle_root == bytes.fromhex(merkle_root)
