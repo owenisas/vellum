@@ -1,82 +1,145 @@
-"""Shared pytest fixtures."""
+"""Shared pytest fixtures for the Vellum test suite.
+
+Forces fixture demo mode + simulated chain + disabled Auth0 for every test,
+and provides an httpx AsyncClient bound to a freshly-built FastAPI app whose
+lifespan handler runs (so app.state.services and friends exist).
+"""
 
 from __future__ import annotations
 
-import os
-import tempfile
-from pathlib import Path
+import hashlib
+from typing import Any
 
 import pytest
 import pytest_asyncio
+from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
 
-
-@pytest.fixture(autouse=True)
-def _set_env(monkeypatch, tmp_path):
-    """Each test gets an isolated DB and disables Auth0/Solana by default."""
-    db_file = tmp_path / "veritext_test.db"
-    monkeypatch.setenv("DB_PATH", str(db_file))
-    monkeypatch.setenv("CHAIN_BACKEND", "simulated")
-    monkeypatch.setenv("ANCHOR_STRATEGY", "per_response")
-    monkeypatch.setenv("AUTH0_DOMAIN", "")
-    monkeypatch.setenv("LOG_FORMAT", "json")
-    monkeypatch.setenv("LOG_LEVEL", "warning")
-    # Reset singleton
-    from veritext.config.settings import get_settings
-
-    get_settings.cache_clear()
-    yield
-    get_settings.cache_clear()
-
-
-@pytest_asyncio.fixture
-async def db_conn(tmp_path):
-    from veritext.db.connection import Database
-
-    db = Database(str(tmp_path / "veritext_test.db"))
-    conn = await db.connect()
-    try:
-        yield conn
-    finally:
-        await db.close()
-
-
-@pytest_asyncio.fixture
-async def app_client(monkeypatch, tmp_path):
-    from httpx import ASGITransport, AsyncClient
-
-    from veritext.app import create_app
-
-    app = create_app()
-    transport = ASGITransport(app=app)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            yield client, app
+# ---------------------------------------------------------------------------
+# Settings / env management
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def local_solana_env(monkeypatch, tmp_path):
-    """Run Solana-mode tests against local SQLite and mocked RPC only."""
+def settings_env(tmp_path, monkeypatch):
+    """Force demo+simulated env vars and a per-test SQLite database file."""
+    db_path = tmp_path / "test.db"
+
+    monkeypatch.setenv("DEMO_MODE", "fixture")
+    monkeypatch.setenv("AUTH0_DOMAIN", "")
+    monkeypatch.setenv("CHAIN_BACKEND", "simulated")
+    monkeypatch.setenv("DB_PATH", str(db_path))
+    monkeypatch.setenv("REGISTRY_ADMIN_SECRET", "dev-admin-secret")
+    monkeypatch.setenv("LOG_FORMAT", "pretty")
+    monkeypatch.setenv("LOG_LEVEL", "warning")
+    # Avoid live LLM provider keys leaking into tests.
+    monkeypatch.setenv("GOOGLE_API_KEY", "")
+    monkeypatch.setenv("MINIMAX_API_KEY", "")
+
+    from vellum.config.settings import reload_settings
+
+    reload_settings()
+    yield {"db_path": str(db_path)}
+    reload_settings()
+
+
+@pytest.fixture
+def local_solana_env(tmp_path, monkeypatch):
+    """Force Solana mode against isolated SQLite and mocked/local RPC only."""
+    db_path = tmp_path / "solana-test.db"
     keypair_path = tmp_path / "solana-keypair.json"
     keypair_path.write_text("[]", encoding="utf-8")
+
+    monkeypatch.setenv("DEMO_MODE", "fixture")
+    monkeypatch.setenv("AUTH0_DOMAIN", "")
     monkeypatch.setenv("CHAIN_BACKEND", "solana")
+    monkeypatch.setenv("DB_PATH", str(db_path))
+    monkeypatch.setenv("REGISTRY_ADMIN_SECRET", "dev-admin-secret")
+    monkeypatch.setenv("LOG_FORMAT", "pretty")
+    monkeypatch.setenv("LOG_LEVEL", "warning")
+    monkeypatch.setenv("GOOGLE_API_KEY", "")
+    monkeypatch.setenv("MINIMAX_API_KEY", "")
     monkeypatch.setenv("SOLANA_KEYPAIR_PATH", str(keypair_path))
     monkeypatch.setenv("SOLANA_RPC_URL", "http://local-solana-rpc.invalid")
+    monkeypatch.setenv("SOLANA_CLUSTER", "localnet")
 
-    from veritext.config.settings import get_settings
+    from vellum.config.settings import reload_settings
 
-    get_settings.cache_clear()
-    yield
-    get_settings.cache_clear()
+    settings = reload_settings()
+    yield settings
+    reload_settings()
+
+
+# ---------------------------------------------------------------------------
+# FastAPI app + httpx client
+# ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
-async def solana_app_client(local_solana_env):
-    from httpx import ASGITransport, AsyncClient
-
-    from veritext.app import create_app
+async def client(settings_env):
+    """An httpx.AsyncClient bound to a fresh FastAPI app, with lifespan running."""
+    from vellum.app import create_app
 
     app = create_app()
-    transport = ASGITransport(app=app)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            yield client, app
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c
+
+
+@pytest_asyncio.fixture
+async def solana_client(local_solana_env):
+    """An httpx.AsyncClient bound to a Solana-mode FastAPI app."""
+    from vellum.app import create_app
+
+    app = create_app()
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c, app
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def make_company(client):
+    """Factory that creates a company via the API and returns the parsed JSON.
+
+    The returned dict includes ``private_key_hex`` (auto-generated by the API).
+    """
+
+    async def _make(name: str = "Test Co") -> dict[str, Any]:
+        resp = await client.post(
+            "/api/companies",
+            json={
+                "name": name,
+                "auto_generate": True,
+                "admin_secret": "dev-admin-secret",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    return _make
+
+
+def sign_text(text: str, private_key_hex: str) -> tuple[str, str]:
+    """Hash + sign ``text``. Returns (sha256_hex, signature_hex)."""
+    from vellum.auth.ecdsa import hash_text, sign_hash
+
+    h = hash_text(text)
+    sig = sign_hash(h, private_key_hex)
+    return h, sig
+
+
+@pytest.fixture
+def signer():
+    """Convenience fixture exposing :func:`sign_text` as a callable."""
+    return sign_text
+
+
+def sha256_hex(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()

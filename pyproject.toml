@@ -1,15 +1,13 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "veritext"
+name = "vellum"
 version = "2.0.0"
-description = "Cryptographic provenance tags for AI-generated text — invisible Unicode tags + ECDSA + Merkle-batched chain anchoring."
+description = "Vellum v2 — Provenance tracking platform for AI-generated text."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
-authors = [{name = "Veritext"}]
+license = { text = "MIT" }
+authors = [
+    { name = "Vellum", email = "team@vellum.io" },
+]
 dependencies = [
     # Web framework
     "fastapi>=0.115",
@@ -17,27 +15,25 @@ dependencies = [
     "python-dotenv>=1.0",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
+
     # Database
     "aiosqlite>=0.21",
+
     # Auth
     "python-jose[cryptography]>=3.3",
     "httpx>=0.28",
-    # Crypto
+
+    # Crypto (ECDSA)
     "eth-account>=0.13",
     "eth-keys>=0.6",
-    "cryptography>=43",       # AES-128-CCM (improvement #7)
-    # Canonical JSON
-    "rfc8785>=0.1.4",         # JCS (improvement #1)
-    # Borsh memo encoding
-    "borsh-construct>=0.1.0", # (improvement #13)
-    # Grapheme support
-    "regex>=2024.11",         # \X grapheme cluster (improvement #14)
-    # LLM providers (Google + Fixture)
+
+    # LLM Providers
     "google-generativeai>=0.8",
+    "anthropic>=0.42",
+    "boto3>=1.35",
+
     # Logging
     "structlog>=24.4",
-    # Watermark library is a workspace local package
-    # No external watermark dep; built from packages/watermark
 ]
 
 [project.optional-dependencies]
@@ -45,51 +41,58 @@ solana = [
     "solana>=0.35",
     "solders>=0.25",
 ]
-genwatermark = [
-    # SynthID-Text + transformers + torch (heavy, gated)
-    "transformers>=4.45",
-    "torch>=2.4",
-]
-
-[dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",
-    "hypothesis>=6.115",      # Property-based + adversarial tests (#12)
     "ruff>=0.8",
     "mypy>=1.13",
     "alembic>=1.14",
+    "playwright>=1.50",
+    "asgi-lifespan>=2.1",
 ]
 
 [project.scripts]
-veritext-verify = "veritext.cli.verify:main"
-veritext-server = "veritext.app:run"
+vellum = "vellum.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/veritext", "packages/watermark", "packages/genwatermark", "packages/merklebatch"]
+packages = ["src/vellum", "packages/watermark"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv.sources]
+watermark = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/watermark"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src", "packages"]
+python_files = ["test_*.py"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 
 [tool.ruff]
+line-length = 110
 target-version = "py311"
-line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]
-ignore = ["E501"]
+select = ["E", "F", "I", "B", "UP", "N", "RUF"]
+ignore = ["E501", "B008", "N818"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
 ignore_missing_imports = true
-
-[tool.coverage.run]
-source = ["src/veritext", "packages/watermark", "packages/genwatermark", "packages/merklebatch"]
-omit = ["**/tests/*", "**/_proto_*.py"]

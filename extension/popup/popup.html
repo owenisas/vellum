@@ -1,15 +1,69 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=320, initial-scale=1" />
+    <title>Vellum Watermark Detector</title>
     <link rel="stylesheet" href="popup.css" />
-    <title>Veritext</title>
   </head>
   <body>
-    <h1>Veritext</h1>
-    <p id="status">Scanning…</p>
-    <div id="results"></div>
-    <button id="rescan">Rescan</button>
+    <header class="header">
+      <h1 class="title">Vellum Watermark Detector</h1>
+      <p class="subtitle" id="page-url">Loading…</p>
+    </header>
+
+    <section class="actions">
+      <button type="button" class="btn btn-primary" id="scan-btn">
+        Scan this page
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        id="dashboard-btn"
+        data-href="https://vellum.io/dashboard"
+      >
+        Open dashboard
+      </button>
+    </section>
+
+    <section class="summary" id="summary" hidden>
+      <span class="summary-count" id="summary-count">0</span>
+      <span class="summary-label">watermark(s) detected</span>
+      <span class="summary-invalid" id="summary-invalid"></span>
+    </section>
+
+    <section class="results" id="results">
+      <p class="empty" id="empty-state">
+        No watermarks detected on this page.
+      </p>
+      <ul class="result-list" id="result-list" hidden></ul>
+    </section>
+
+    <template id="result-item-template">
+      <li class="result-item">
+        <div class="result-row">
+          <span class="result-label">issuer</span>
+          <span class="result-value" data-field="issuerId"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">model</span>
+          <span class="result-value" data-field="modelId"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">key</span>
+          <span class="result-value" data-field="keyId"></span>
+        </div>
+        <div class="result-row result-row-hex">
+          <span class="result-label">payload</span>
+          <code class="result-value" data-field="rawPayloadHex"></code>
+        </div>
+        <div class="result-row">
+          <span class="result-label">crc</span>
+          <span class="result-badge" data-field="crcBadge"></span>
+        </div>
+      </li>
+    </template>
+
     <script type="module" src="popup.js"></script>
   </body>
 </html>

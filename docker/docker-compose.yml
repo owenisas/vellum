@@ -1,24 +1,36 @@
-version: "3.9"
+# Vellum compose stack.
+# Run from the repo root:
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# Secrets come from ../.env on the host. Do NOT commit a populated .env.
 
 services:
-  veritext:
+  app:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: vellum:local
+    container_name: vellum-app
     ports:
       - "5050:5050"
-    environment:
-      - DEMO_MODE=fixture
-      - CHAIN_BACKEND=simulated
-      - LOG_LEVEL=info
-      - LOG_FORMAT=json
     volumes:
+      # Persist SQLite + keypairs across container restarts.
       - ../data:/app/data
+    env_file:
+      - ../.env
+    environment:
+      # Override anything from .env here if needed.
+      PYTHONUNBUFFERED: "1"
+    restart: unless-stopped
 
-  # Uncomment to run a local Solana test validator alongside.
-  # solana-test:
-  #   image: solanalabs/solana:edge
-  #   command: solana-test-validator --quiet
+  # Uncomment to run a local Solana validator alongside the app.
+  # The app should set CHAIN_BACKEND=solana and SOLANA_RPC_URL=http://solana:8899.
+  #
+  # solana:
+  #   image: solanalabs/solana:stable
+  #   container_name: vellum-solana
+  #   command: ["solana-test-validator", "--reset", "--quiet"]
   #   ports:
-  #     - "8899:8899"
-  #     - "8900:8900"
+  #     - "8899:8899"   # JSON-RPC
+  #     - "8900:8900"   # WebSocket / pub-sub
+  #   restart: unless-stopped

@@ -1,30 +1,44 @@
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
-interface State {
-  err: Error | null;
-  errorId: string | null;
+interface Props {
+  children: ReactNode;
+  fallback?: (error: Error, reset: () => void) => ReactNode;
 }
 
-export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { err: null, errorId: null };
+interface State {
+  error: Error | null;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
-    const id = Math.random().toString(16).slice(2, 10);
-    return { err: error, errorId: id };
+    return { error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[veritext]", this.state.errorId, error, info.componentStack);
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    // eslint-disable-next-line no-console
+    console.error("ErrorBoundary caught", error, info);
   }
+
+  reset = () => this.setState({ error: null });
 
   render() {
-    if (this.state.err) {
+    if (this.state.error) {
+      if (this.props.fallback)
+        return this.props.fallback(this.state.error, this.reset);
       return (
         <div className="card">
-          <h3>Something went wrong</h3>
-          <p className="mono">Error ID: {this.state.errorId}</p>
-          <pre>{this.state.err.message}</pre>
-          <button onClick={() => location.reload()}>Reload</button>
+          <h2>Something went wrong</h2>
+          <p className="muted">
+            The page hit an error. You can refresh or go back to the dashboard.
+          </p>
+          <pre className="mono" style={{ background: "var(--color-panel-light)", padding: "8px", borderRadius: "6px" }}>
+            {this.state.error.message}
+          </pre>
+          <button className="btn" onClick={this.reset}>
+            Try again
+          </button>
         </div>
       );
     }

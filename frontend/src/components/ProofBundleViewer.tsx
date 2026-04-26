@@ -1,67 +1,117 @@
-import { useProofBundle } from "../hooks/useProofBundle";
+import { useMemo, useState } from "react";
 import type { ProofBundleV2 } from "../api/types";
-import { WatermarkBadge } from "./WatermarkBadge";
+import { Badge, Button } from "./ui";
 
-interface Props {
-  bundle: ProofBundleV2;
-  showRawJson?: boolean;
-}
+export function ProofBundleViewer({ bundle }: { bundle: ProofBundleV2 }) {
+  const [copied, setCopied] = useState(false);
+  const json = useMemo(() => JSON.stringify(bundle, null, 2), [bundle]);
 
-export function ProofBundleViewer({ bundle, showRawJson = true }: Props) {
-  const { explorerUrl, chainType, inclusionProof, merkleRoot, bundleId } = useProofBundle(bundle);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard not available */
+    }
+  };
+
+  const issuer = bundle.issuer as Record<string, unknown>;
+  const agentAction = bundle.agent_action as Record<string, unknown> | null | undefined;
+  const sig = bundle.signature as Record<string, unknown>;
+  const watermark = bundle.watermark as Record<string, unknown>;
+  const anchor = (bundle.anchors?.[0] ?? {}) as Record<string, unknown>;
+  const hints = bundle.verification_hints as Record<string, unknown>;
+  const explorer = hints?.explorer_url as string | undefined;
+  const chainType = hints?.chain_type as string | undefined;
+  const actorEmail = agentAction?.email ? String(agentAction.email) : "";
+  const actorModel = agentAction?.model ? String(agentAction.model) : "";
 
   return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>Proof Bundle <span className="mono">{bundleId}</span></h3>
-      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-        <WatermarkBadge
-          detected={bundle.watermark.detected}
-          tagCount={bundle.watermark.tag_count}
-          validCount={bundle.watermark.valid_count}
-        />
-        <span className="badge ok">scheme: {bundle.signature.scheme}</span>
-        <span className="badge ok">canon: {bundle.signature.canonicalization}</span>
-        {bundle.encrypted_payload_metadata && (
-          <span className="badge warn">encrypted ({bundle.encrypted_payload_metadata.algorithm})</span>
-        )}
-        {bundle.watermark.generation_time?.present && (
-          <span className="badge ok">SynthID p={bundle.watermark.generation_time.p_value.toFixed(3)}</span>
-        )}
-      </div>
-
-      <div className="mono" style={{ fontSize: 12, marginBottom: "1rem" }}>
-        <div>Issuer: {bundle.issuer.name} (#{bundle.issuer.issuer_id}, key #{bundle.issuer.current_key_id})</div>
-        <div>Address: {bundle.issuer.eth_address}</div>
-        <div>Text hash: {bundle.hashing.text_hash.slice(0, 32)}…</div>
-        <div>Signed fields: {bundle.signed_fields.join(", ")}</div>
-      </div>
-
-      {bundle.anchors.map((a, i) => (
-        <div key={i} className="mono" style={{ marginBottom: "0.5rem" }}>
-          <div>Anchor: <strong>{a.type}</strong> at {a.timestamp}</div>
-          {a.tx_hash && <div>tx: {a.tx_hash.slice(0, 32)}…</div>}
-          {merkleRoot && <div>merkle root: {merkleRoot.slice(0, 32)}…</div>}
-          {inclusionProof && inclusionProof.length > 0 && (
-            <div>inclusion proof: {inclusionProof.length} steps</div>
-          )}
-          {explorerUrl && (
-            <div>
-              <a href={explorerUrl} target="_blank" rel="noopener noreferrer">
-                View on Solana Explorer →
-              </a>
-            </div>
-          )}
+    <div>
+      <div className="flex-between mt-sm" style={{ marginBottom: "12px" }}>
+        <div className="flex gap-sm">
+          <Badge tone="info">{bundle.spec}</Badge>
+          {chainType && <Badge tone="success">chain: {chainType}</Badge>}
         </div>
-      ))}
-      <div className="mono" style={{ fontSize: 12, color: "var(--color-muted)" }}>
-        Verification: {chainType}
+        <Button variant="secondary" onClick={copy}>
+          {copied ? "Copied!" : "Copy JSON"}
+        </Button>
       </div>
-      {showRawJson && (
-        <details style={{ marginTop: "1rem" }}>
-          <summary>Raw JSON</summary>
-          <pre>{JSON.stringify(bundle, null, 2)}</pre>
-        </details>
-      )}
+
+      <dl className="kv">
+        <dt>Bundle ID</dt>
+        <dd className="mono">{bundle.bundle_id}</dd>
+        <dt>Issuer</dt>
+        <dd>
+          {String(issuer?.name ?? "")}{" "}
+          <span className="muted">(#{String(issuer?.issuer_id ?? "")})</span>
+        </dd>
+        <dt>Address</dt>
+        <dd className="mono">{String(issuer?.eth_address ?? "")}</dd>
+        {agentAction && (
+          <>
+            <dt>Auth0 actor</dt>
+            <dd>
+              <span className="mono">{String(agentAction.subject ?? "")}</span>
+              {actorEmail && <span className="muted"> ({actorEmail})</span>}
+            </dd>
+            <dt>Agent action</dt>
+            <dd>
+              <Badge tone="success">{String(agentAction.action ?? "secured")}</Badge>
+              {actorModel && <span className="muted"> via {actorModel}</span>}
+            </dd>
+          </>
+        )}
+        <dt>Signature</dt>
+        <dd className="mono">{String(sig?.signature_hex ?? "")}</dd>
+        <dt>Text hash</dt>
+        <dd className="mono">{String((bundle.hashing as any)?.text_hash ?? "")}</dd>
+        <dt>Watermark</dt>
+        <dd>
+          {watermark?.detected ? (
+            <Badge tone="success">
+              {String(watermark?.valid_count)} valid /{" "}
+              {String(watermark?.tag_count)} total
+            </Badge>
+          ) : (
+            <Badge tone="warning">Not detected</Badge>
+          )}
+        </dd>
+        <dt>Anchor</dt>
+        <dd>
+          <Badge tone="info">{String(anchor?.type ?? "")}</Badge>{" "}
+          <span className="mono muted">block #{String(anchor?.block_num ?? "")}</span>
+        </dd>
+        {explorer && (
+          <>
+            <dt>Explorer</dt>
+            <dd>
+              <a href={explorer} target="_blank" rel="noreferrer noopener">
+                {explorer}
+              </a>
+            </dd>
+          </>
+        )}
+      </dl>
+
+      <details style={{ marginTop: "16px" }}>
+        <summary className="muted" style={{ cursor: "pointer" }}>
+          Raw bundle JSON
+        </summary>
+        <pre
+          className="mono"
+          style={{
+            background: "var(--color-panel-light)",
+            padding: "12px",
+            borderRadius: "6px",
+            overflow: "auto",
+            maxHeight: "400px",
+          }}
+        >
+          {json}
+        </pre>
+      </details>
     </div>
   );
 }

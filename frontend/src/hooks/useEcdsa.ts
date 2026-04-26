@@ -1,70 +1,61 @@
-import { useState } from "react";
-import { ethers } from "ethers";
+import { useCallback, useState } from "react";
+import { Wallet, sha256, toUtf8Bytes } from "ethers";
 
-const VERITEXT_DOMAIN = {
-  name: "Veritext",
-  version: "2",
-  chainId: 1,
-  verifyingContract: "0x0000000000000000000000000000000000000000",
-} as const;
+/** Hash + sign hooks built on ethers.js. */
+export function useEcdsa(privateKeyHex: string | null) {
+  const [error, setError] = useState<string | null>(null);
 
-const VERITEXT_TYPES: Record<string, ethers.TypedDataField[]> = {
-  VeritextAnchor: [
-    { name: "textHash", type: "bytes32" },
-    { name: "issuerId", type: "uint256" },
-    { name: "timestamp", type: "uint256" },
-    { name: "bundleNonce", type: "bytes32" },
-  ],
-};
+  const wallet = privateKeyHex
+    ? (() => {
+        try {
+          return new Wallet(
+            privateKeyHex.startsWith("0x") ? privateKeyHex : `0x${privateKeyHex}`,
+          );
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("invalid private key", e);
+          return null;
+        }
+      })()
+    : null;
 
-export interface AnchorMessage {
-  textHash: string; // 0x... 32 bytes
-  issuerId: number;
-  timestamp: number;
-  bundleNonce: string; // 0x... 32 bytes
+  const hashText = useCallback((text: string): string => {
+    // sha256(utf8(text)) — matches the Python `hash_text`
+    return sha256(toUtf8Bytes(text)).slice(2); // strip 0x to match server hex
+  }, []);
+
+  const signHash = useCallback(
+    async (hashHex: string): Promise<string> => {
+      if (!wallet) throw new Error("No private key available");
+      // Sign the hex string AS A TEXT MESSAGE — matches eth_account.encode_defunct(text=hash)
+      // server-side.
+      const sig = await wallet.signMessage(hashHex);
+      return sig;
+    },
+    [wallet],
+  );
+
+  const signText = useCallback(
+    async (text: string): Promise<{ hash: string; signature: string }> => {
+      try {
+        setError(null);
+        const hash = hashText(text);
+        const signature = await signHash(hash);
+        return { hash, signature };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        throw e;
+      }
+    },
+    [hashText, signHash],
+  );
+
+  return {
+    address: wallet?.address ?? null,
+    hashText,
+    signHash,
+    signText,
+    error,
+  };
 }
-
-export function useEcdsa() {
-  const [error, setError] = useState<Error | null>(null);
-
-  // EIP-712 path. Falls back to EIP-191 personal_sign if signTypedData throws.
-  async function signWithKey(
-    message: AnchorMessage,
-    privateKeyHex: string,
-  ): Promise<{ signatureHex: string; scheme: "eip712" | "eip191_personal_sign" }> {
-    try {
-      const wallet = new ethers.Wallet(privateKeyHex);
-      const sig = await wallet.signTypedData(VERITEXT_DOMAIN, VERITEXT_TYPES, message);
-      return { signatureHex: sig, scheme: "eip712" };
-    } catch (err) {
-      // Fall back to EIP-191
-      const wallet = new ethers.Wallet(privateKeyHex);
-      const sig = await wallet.signMessage(ethers.getBytes(message.textHash));
-      setError(err instanceof Error ? err : new Error("eip712 failed; used eip191"));
-      return { signatureHex: sig, scheme: "eip191_personal_sign" };
-    }
-  }
-
-  function sha256Hex(text: string): string {
-    // Use SubtleCrypto when available; ethers' keccak256 isn't sha256.
-    return _sha256Hex(text);
-  }
-
-  return { signWithKey, sha256Hex, error };
-}
-
-async function _sha256HexAsync(text: string): Promise<string> {
-  const enc = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// Synchronous wrapper used in places where we already have the digest. For the
-// async path callers should use the helper directly.
-function _sha256Hex(_text: string): string {
-  throw new Error("use _sha256HexAsync");
-}
-
-export { _sha256HexAsync as sha256HexAsync };

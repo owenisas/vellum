@@ -1,190 +1,200 @@
-import { useEffect, useState } from "react";
-import { ethers } from "ethers";
-
-import { useGenerate } from "../api/chat";
-import { useAnchor } from "../api/registry";
+import { useState } from "react";
+import { PageContainer } from "../layout/PageContainer";
+import { Badge, Button, Card } from "../components/ui";
 import { ModelSelector } from "../components/ModelSelector";
 import { ProofBundleViewer } from "../components/ProofBundleViewer";
-import { useEcdsa, sha256HexAsync } from "../hooks/useEcdsa";
-import { useDemoIdentity } from "../hooks/useDemoIdentity";
-import type { AnchorResponse } from "../api/types";
+import { useGenerate, useModels } from "../api/chat";
+import { useAnchor } from "../api/registry";
+import { useCompanies } from "../api/companies";
+import { useEcdsa } from "../hooks/useEcdsa";
+import type { AnchorResponse, ChatResponse } from "../api/types";
+import { ApiError } from "../api/client";
 
 export function GenerateAndAnchor() {
-  const { status: idStatus } = useDemoIdentity();
-  const [prompt, setPrompt] = useState("Tell me about cryptographic provenance.");
-  const [provider, setProvider] = useState("fixture");
-  const [model, setModel] = useState("fixture");
-  const [issuerId, setIssuerId] = useState(1);
-  const [privateKey, setPrivateKey] = useState("");
-  const [text, setText] = useState("");
-  const [bundle, setBundle] = useState<AnchorResponse | null>(null);
-  const [useDemoIdentityFlag, setUseDemoIdentityFlag] = useState(true);
-
+  const models = useModels();
   const generate = useGenerate();
   const anchor = useAnchor();
-  const { signWithKey } = useEcdsa();
+  const companies = useCompanies();
 
-  // When demo identity is ready and user hasn't overridden, auto-fill.
-  useEffect(() => {
-    if (idStatus.state === "ready" && useDemoIdentityFlag) {
-      setIssuerId(idStatus.identity.issuerId);
-      setPrivateKey(idStatus.identity.privateKey);
+  const [prompt, setPrompt] = useState(
+    "Write a one-paragraph explanation of how content provenance works.",
+  );
+  const [provider, setProvider] = useState("google");
+  const [model, setModel] = useState("gemma-4-27b-it");
+  const [chatResp, setChatResp] = useState<ChatResponse | null>(null);
+  const [anchorResp, setAnchorResp] = useState<AnchorResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [issuerId, setIssuerId] = useState<number | "">("");
+  const [privateKey, setPrivateKey] = useState("");
+
+  const ecdsa = useEcdsa(privateKey || null);
+
+  const onGenerate = async () => {
+    setError(null);
+    setChatResp(null);
+    setAnchorResp(null);
+    try {
+      const resp = await generate.mutateAsync({
+        provider,
+        model,
+        messages: [{ role: "user", content: prompt }],
+        watermark: true,
+      });
+      setChatResp(resp);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Generation failed");
     }
-  }, [idStatus, useDemoIdentityFlag]);
-
-  const handleGenerate = async () => {
-    const res = await generate.mutateAsync({
-      prompt,
-      model,
-      provider,
-      watermark: true,
-      watermark_params: { issuer_id: issuerId, model_id: 1, model_version_id: 1 },
-    });
-    setText(res.text);
   };
 
-  const handleAnchor = async () => {
-    if (!privateKey || !text) return;
-    const textHash = await sha256HexAsync(text);
-    const timestamp = Math.floor(Date.now() / 1000);
-    const bundleNonce = "0x" + ethers.hexlify(ethers.randomBytes(32)).slice(2);
-    const { signatureHex, scheme } = await signWithKey(
-      {
-        textHash: "0x" + textHash,
-        issuerId,
-        timestamp,
-        bundleNonce,
-      },
-      privateKey,
-    );
-    const res = await anchor.mutateAsync({
-      text,
-      issuer_id: issuerId,
-      signature_hex: signatureHex,
-      sig_scheme: scheme,
-      timestamp,
-      bundle_nonce_hex: bundleNonce.slice(2),
-    });
-    setBundle(res);
+  const onAnchor = async () => {
+    if (!chatResp) return;
+    if (!issuerId) {
+      setError("Pick a company / issuer ID first");
+      return;
+    }
+    if (!privateKey) {
+      setError("Paste the company's private key to sign");
+      return;
+    }
+    setError(null);
+    try {
+      const { hash, signature } = await ecdsa.signText(chatResp.text);
+      const resp = await anchor.mutateAsync({
+        text: chatResp.text,
+        raw_text: chatResp.raw_text,
+        signature_hex: signature,
+        issuer_id: Number(issuerId),
+        metadata: { sha256: hash, provider: chatResp.provider, model: chatResp.model },
+      });
+      setAnchorResp(resp);
+    } catch (e) {
+      const msg =
+        e instanceof ApiError
+          ? `${e.message}${e.errorId ? ` (${e.errorId})` : ""}`
+          : e instanceof Error
+            ? e.message
+            : "Anchor failed";
+      setError(msg);
+    }
   };
-
-  const demoReady = idStatus.state === "ready";
 
   return (
-    <div>
-      <h2>Generate &amp; Anchor</h2>
-      <p style={{ color: "var(--color-muted)" }}>
-        Manual flow with full control. For the narrated walkthrough, see <a href="/demo">Live Demo</a>.
-      </p>
+    <PageContainer
+      title="Generate & Anchor"
+      subtitle="Run the full pipeline: generate → watermark → sign → anchor"
+    >
+      {error && <div className="alert alert-error">{error}</div>}
 
-      {demoReady && (
-        <div
-          className="card"
-          style={{
-            display: "flex",
-            gap: "0.75rem",
-            alignItems: "center",
-            background: "rgba(79, 70, 229, 0.07)",
-            borderColor: "rgba(79, 70, 229, 0.4)",
-            flexWrap: "wrap",
-          }}
-        >
-          <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={useDemoIdentityFlag}
-              onChange={(e) => setUseDemoIdentityFlag(e.target.checked)}
-            />
-            Use demo identity
-          </label>
-          <span className="mono" style={{ fontSize: 12, color: "var(--color-muted)" }}>
-            {idStatus.identity.name} · issuer #{idStatus.identity.issuerId} ·{" "}
-            {idStatus.identity.address.slice(0, 10)}…{idStatus.identity.address.slice(-6)}
-          </span>
-        </div>
-      )}
-
-      <div className="card">
-        <h3>1. Generate</h3>
+      <Card title="1. Choose a model">
         <ModelSelector
           provider={provider}
           model={model}
           onProviderChange={setProvider}
           onModelChange={setModel}
+          models={models.data}
+          loading={models.isLoading}
         />
+      </Card>
+
+      <Card title="2. Prompt">
         <textarea
-          rows={4}
+          className="textarea"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          style={{ width: "100%", marginTop: "0.5rem" }}
         />
-        <div>
-          <label>
-            Issuer ID:{" "}
-            <input
-              type="number"
-              value={issuerId}
-              onChange={(e) => {
-                setUseDemoIdentityFlag(false);
-                setIssuerId(+e.target.value);
-              }}
-            />
-          </label>
+        <div className="flex gap-sm mt-md">
+          <Button onClick={onGenerate} disabled={generate.isPending}>
+            {generate.isPending ? "Generating…" : "Generate"}
+          </Button>
         </div>
-        <button onClick={handleGenerate} disabled={generate.isPending}>
-          {generate.isPending ? "Generating…" : "Generate"}
-        </button>
-      </div>
+      </Card>
 
-      {text && (
-        <div className="card">
-          <h3>2. Watermarked output</h3>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{text}</pre>
-        </div>
+      {chatResp && !chatResp.error && (
+        <Card title="3. Generated text">
+          <div className="flex gap-sm" style={{ marginBottom: "8px" }}>
+            <Badge tone="info">{chatResp.provider}</Badge>
+            <Badge tone="info">{chatResp.model}</Badge>
+            {chatResp.watermarked && (
+              <Badge tone="success">watermarked</Badge>
+            )}
+            <span className="muted" style={{ fontSize: "0.85rem" }}>
+              {chatResp.usage.input_tokens} in / {chatResp.usage.output_tokens} out
+            </span>
+          </div>
+          <pre
+            className="mono"
+            style={{
+              background: "var(--color-panel-light)",
+              padding: "12px",
+              borderRadius: "6px",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {chatResp.text}
+          </pre>
+        </Card>
       )}
 
-      {text && (
-        <div className="card">
-          <h3>3. Sign &amp; anchor</h3>
-          {useDemoIdentityFlag && demoReady ? (
-            <p style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              Signing with the demo identity wallet. EIP-712 typed-data via ethers.js — keys never leave your browser.
-            </p>
-          ) : (
-            <>
-              <p style={{ color: "var(--color-muted)", fontSize: 13 }}>
-                Paste a private key here for the demo (in production this comes from a wallet).
-                EIP-712 typed-data signing.
-              </p>
-              <input
-                type="password"
-                placeholder="0x..."
-                value={privateKey}
-                onChange={(e) => {
-                  setUseDemoIdentityFlag(false);
-                  setPrivateKey(e.target.value);
-                }}
-                style={{ width: "100%" }}
-              />
-            </>
-          )}
-          <button onClick={handleAnchor} disabled={anchor.isPending || !privateKey}>
-            {anchor.isPending ? "Anchoring…" : "Sign & Anchor"}
-          </button>
-        </div>
-      )}
-
-      {bundle && (
-        <>
-          <h3>4. Proof bundle</h3>
-          {bundle.bundle_status === "pending_batch" && (
-            <div className="card">
-              <span className="badge warn">pending Merkle batch</span> — your bundle will be promoted within the configured window.
+      {chatResp && (
+        <Card title="4. Sign & anchor">
+          <div className="row">
+            <div className="col">
+              <label className="label" htmlFor="issuer-select">
+                Company (issuer)
+              </label>
+              <select
+                id="issuer-select"
+                className="select"
+                value={issuerId}
+                onChange={(e) =>
+                  setIssuerId(e.target.value ? Number(e.target.value) : "")
+                }
+              >
+                <option value="">— pick a company —</option>
+                {(companies.data ?? []).map((c) => (
+                  <option key={c.id} value={c.issuer_id}>
+                    {c.name} (#{c.issuer_id} · {c.eth_address.slice(0, 10)}…)
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
-          <ProofBundleViewer bundle={bundle.proof_bundle_v2} />
-        </>
+            <div className="col">
+              <label className="label" htmlFor="pk-input">
+                Private key (hex, never sent to server)
+              </label>
+              <input
+                id="pk-input"
+                className="input mono"
+                type="password"
+                value={privateKey}
+                onChange={(e) => setPrivateKey(e.target.value)}
+                placeholder="0x..."
+              />
+              {ecdsa.address && (
+                <span className="muted" style={{ fontSize: "0.85rem" }}>
+                  Derived address: {ecdsa.address}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="mt-md">
+            <Button onClick={onAnchor} disabled={anchor.isPending}>
+              {anchor.isPending ? "Anchoring…" : "Sign & anchor"}
+            </Button>
+          </div>
+        </Card>
       )}
-    </div>
+
+      {anchorResp && (
+        <Card title="5. Proof bundle">
+          <div className="alert alert-success">
+            Anchored as block #{anchorResp.chain_receipt.block_num} —{" "}
+            <span className="mono">{anchorResp.chain_receipt.tx_hash.slice(0, 24)}…</span>
+          </div>
+          <ProofBundleViewer bundle={anchorResp.proof_bundle_v2} />
+        </Card>
+      )}
+    </PageContainer>
   );
 }

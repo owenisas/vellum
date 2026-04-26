@@ -1,28 +1,51 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-
 import { get, post } from "./client";
-import type { ChatRequest, ChatResponse } from "./types";
-
-export interface ModelEntry {
-  id: string;
-  name: string;
-  provider: string;
-}
-export interface ModelsResponse {
-  models: ModelEntry[];
-}
+import type {
+  ApplyResponse,
+  ChatRequest,
+  ChatResponse,
+  DetectResponse,
+  ModelsResponse,
+  StripResponse,
+  WmParams,
+} from "./types";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const chatApi = {
   models: () => get<ModelsResponse>("/api/models"),
   generate: (req: ChatRequest) => post<ChatResponse>("/api/chat", req),
-  detect: (text: string) => post<{ watermarked: boolean; tag_count: number; valid_count: number; invalid_count: number; payloads: unknown[] }>(
-    "/api/detect",
-    { text },
-  ),
-  strip: (text: string) => post<{ text: string; stripped_count: number }>("/api/strip", { text }),
+  detect: (text: string, wm_params?: WmParams) =>
+    post<DetectResponse>("/api/detect", { text, wm_params }),
+  strip: (text: string) => post<StripResponse>("/api/strip", { text }),
+  apply: (text: string, wm_params?: WmParams) =>
+    post<ApplyResponse>("/api/apply", { text, wm_params }),
 };
 
-export const useModels = () => useQuery({ queryKey: ["models"], queryFn: chatApi.models });
-export const useGenerate = () => useMutation({ mutationFn: chatApi.generate });
-export const useDetect = () => useMutation({ mutationFn: chatApi.detect });
-export const useStrip = () => useMutation({ mutationFn: chatApi.strip });
+export function useModels() {
+  return useQuery({
+    queryKey: ["models"],
+    queryFn: chatApi.models,
+    staleTime: 60_000,
+  });
+}
+
+export function useGenerate() {
+  return useMutation({ mutationFn: chatApi.generate });
+}
+
+export function useDetect() {
+  return useMutation({
+    mutationFn: ({ text, wm_params }: { text: string; wm_params?: WmParams }) =>
+      chatApi.detect(text, wm_params),
+  });
+}
+
+export function useStrip() {
+  return useMutation({ mutationFn: chatApi.strip });
+}
+
+export function useApply() {
+  return useMutation({
+    mutationFn: ({ text, wm_params }: { text: string; wm_params?: WmParams }) =>
+      chatApi.apply(text, wm_params),
+  });
+}

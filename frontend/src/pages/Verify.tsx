@@ -1,48 +1,99 @@
 import { useState } from "react";
-import { useVerify } from "../api/registry";
+import { PageContainer } from "../layout/PageContainer";
+import { Badge, Button, Card } from "../components/ui";
+import { ProofBundleViewer } from "../components/ProofBundleViewer";
 import { WatermarkBadge } from "../components/WatermarkBadge";
+import { useVerify } from "../api/registry";
 
 export function Verify() {
-  const [text, setText] = useState("");
   const verify = useVerify();
-  const handleVerify = () => verify.mutate(text);
+  const [text, setText] = useState("");
+
+  const onVerify = async () => {
+    if (!text.trim()) return;
+    await verify.mutateAsync(text);
+  };
 
   return (
-    <div>
-      <h2>Verify</h2>
-      <div className="card">
-        <p>Paste any text to check whether it was emitted by a registered Veritext issuer.</p>
-        <textarea rows={6} style={{ width: "100%" }} value={text} onChange={(e) => setText(e.target.value)} />
-        <button onClick={handleVerify} disabled={verify.isPending || !text}>
-          {verify.isPending ? "Verifying…" : "Verify"}
-        </button>
-      </div>
-      {verify.data && (
-        <div className="card">
-          <h3>Result</h3>
-          <p>
-            <WatermarkBadge
-              detected={verify.data.watermark.unicode.detected}
-              tagCount={verify.data.watermark.unicode.tag_count}
-            />
-            {" "}
-            <span className={"badge " + (verify.data.verified ? "ok" : "warn")}>
-              {verify.data.verified ? "✓ verified in registry" : "✗ not in registry"}
-            </span>
-          </p>
-          {verify.data.verified && (
-            <table>
-              <tbody>
-                <tr><td>Issuer</td><td>{verify.data.company} (#{verify.data.issuer_id})</td></tr>
-                <tr><td>Address</td><td className="mono">{verify.data.eth_address}</td></tr>
-                <tr><td>Block</td><td>{verify.data.block_num}</td></tr>
-                <tr><td>Timestamp</td><td>{verify.data.timestamp}</td></tr>
-              </tbody>
-            </table>
-          )}
-          {verify.data.reason && <p style={{ color: "var(--color-muted)" }}>{verify.data.reason}</p>}
+    <PageContainer
+      title="Verify text"
+      subtitle="Paste any text — including invisible watermarks — and we'll check the registry."
+    >
+      <Card title="Input">
+        <textarea
+          className="textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste text to verify…"
+          style={{ minHeight: "180px" }}
+        />
+        <div className="flex gap-sm mt-md">
+          <Button onClick={onVerify} disabled={verify.isPending || !text.trim()}>
+            {verify.isPending ? "Verifying…" : "Verify"}
+          </Button>
         </div>
+      </Card>
+
+      {verify.error && (
+        <div className="alert alert-error">{(verify.error as Error).message}</div>
       )}
-    </div>
+
+      {verify.data && (
+        <Card title="Result">
+          <div className="flex gap-sm" style={{ marginBottom: "12px" }}>
+            {verify.data.verified ? (
+              <Badge tone="success">verified</Badge>
+            ) : (
+              <Badge tone="warning">not anchored</Badge>
+            )}
+            <WatermarkBadge info={verify.data.watermark} />
+          </div>
+
+          <dl className="kv">
+            <dt>SHA-256</dt>
+            <dd className="mono">{verify.data.sha256_hash}</dd>
+            {verify.data.company && (
+              <>
+                <dt>Issuer</dt>
+                <dd>
+                  {verify.data.company} <span className="muted">(#{verify.data.issuer_id})</span>
+                </dd>
+              </>
+            )}
+            {verify.data.eth_address && (
+              <>
+                <dt>Address</dt>
+                <dd className="mono">{verify.data.eth_address}</dd>
+              </>
+            )}
+            {verify.data.block_num != null && (
+              <>
+                <dt>Block</dt>
+                <dd>#{verify.data.block_num}</dd>
+              </>
+            )}
+            {verify.data.timestamp && (
+              <>
+                <dt>Anchored at</dt>
+                <dd>{verify.data.timestamp}</dd>
+              </>
+            )}
+            {verify.data.reason && (
+              <>
+                <dt>Reason</dt>
+                <dd>{verify.data.reason}</dd>
+              </>
+            )}
+          </dl>
+
+          {verify.data.proof_bundle_v2 && (
+            <div className="mt-lg">
+              <h3>Proof bundle</h3>
+              <ProofBundleViewer bundle={verify.data.proof_bundle_v2} />
+            </div>
+          )}
+        </Card>
+      )}
+    </PageContainer>
   );
 }

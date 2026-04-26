@@ -1,115 +1,108 @@
 /**
- * TS port of packages/watermark/payload.py + _bch.py.
- * Must stay byte-identical to the Python encoder/decoder.
+ * 64-bit watermark payload helpers.
+ *
+ * This module is a faithful TypeScript port of `packages/watermark/payload.py`.
+ * The CRC-8 implementation, bit layout, and field shifts must match exactly so
+ * that payloads produced by the Python encoder round-trip through this decoder.
+ *
+ * Layout (MSB first):
+ *   [63:60] schema_version    4 bits
+ *   [59:48] issuer_id        12 bits
+ *   [47:32] model_id         16 bits
+ *   [31:16] model_version_id 16 bits
+ *   [15:8]  key_id            8 bits
+ *   [7:0]   crc8              8 bits  (poly 0x07, MSB feedback, init 0)
  */
 
-import { TAG_BITS, TAG_END, TAG_START, ZWNJ, ZWSP } from "./constants";
+import { TAG_BITS } from "./constants.js";
 
-export interface PayloadInfo {
+/**
+ * Standard CRC-8 with polynomial 0x07, MSB feedback, initial value 0.
+ *
+ * Mirrors `packages/watermark/payload.py::crc8` byte-for-byte.
+ */
+export const crc8 = (data: Uint8Array): number => {
+  let crc = 0;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i] & 0xff;
+    for (let bit = 0; bit < 8; bit++) {
+      if ((crc & 0x80) !== 0) {
+        crc = ((crc << 1) ^ 0x07) & 0xff;
+      } else {
+        crc = (crc << 1) & 0xff;
+      }
+    }
+  }
+  return crc;
+};
+
+export interface WatermarkMeta {
   schemaVersion: number;
   issuerId: number;
   modelId: number;
   modelVersionId: number;
   keyId: number;
-  codeValid: boolean;
-  errorsCorrected: number;
+  crc: number;
+  crcValid: boolean;
   rawPayloadHex: string;
 }
 
-const POLY = 0x2f;
-const INIT = 0xff;
-const XOROUT = 0xff;
-
-function crc8(bytes: Uint8Array): number {
-  let crc = INIT;
-  for (const b of bytes) {
-    crc ^= b;
-    for (let i = 0; i < 8; i++) {
-      crc = crc & 0x80 ? ((crc << 1) ^ POLY) & 0xff : (crc << 1) & 0xff;
-    }
+/** Convert a 64-character binary string to a 0x-prefixed 16-char hex string. */
+export const bitsToHex = (bits: string): string => {
+  if (bits.length !== TAG_BITS) {
+    throw new Error(`bitsToHex: expected ${TAG_BITS} bits, got ${bits.length}`);
   }
-  return crc ^ XOROUT;
-}
+  if (!/^[01]+$/.test(bits)) {
+    throw new Error("bitsToHex: bits must contain only '0' and '1'");
+  }
+  const value = BigInt("0b" + bits);
+  return "0x" + value.toString(16).padStart(16, "0");
+};
 
-function verifyParity(data56: Uint8Array, parity: number): boolean {
-  return crc8(data56) === (parity & 0xff);
-}
-
-export function decodePayload(buf: Uint8Array): PayloadInfo {
-  if (buf.length !== 8) throw new Error("payload must be 8 bytes");
-  const data56 = buf.slice(0, 7);
-  const parity = buf[7];
-
-  let corrected: Uint8Array | null = null;
-  let errorsCorrected = 0;
-  let codeValid = false;
-
-  if (verifyParity(data56, parity)) {
-    corrected = data56;
-    codeValid = true;
-  } else {
-    // Single-bit flip search across full 64-bit codeword.
-    for (let bit = 0; bit < 64; bit++) {
-      const candidate = new Uint8Array(8);
-      candidate.set(data56);
-      candidate[7] = parity;
-      const byteIdx = 7 - Math.floor(bit / 8);
-      const bitIdx = bit % 8;
-      candidate[byteIdx] ^= 1 << bitIdx;
-      const candData = candidate.slice(0, 7);
-      const candParity = candidate[7];
-      if (verifyParity(candData, candParity)) {
-        corrected = candData;
-        codeValid = true;
-        errorsCorrected = 1;
-        break;
-      }
-    }
-    if (corrected === null) {
-      corrected = data56;
-    }
+/**
+ * Decode a 64-bit binary string into a {@link WatermarkMeta} record.
+ *
+ * Performs CRC-8 validation over the high 56 bits and reports the result via
+ * `crcValid` rather than throwing — invalid payloads are still returned so
+ * callers can surface counts of corrupted tags.
+ */
+export const unpackPayload = (bits: string): WatermarkMeta => {
+  if (bits.length !== TAG_BITS) {
+    throw new Error(
+      `unpackPayload: expected ${TAG_BITS} bits, got ${bits.length}`,
+    );
+  }
+  if (!/^[01]+$/.test(bits)) {
+    throw new Error("unpackPayload: bits must contain only '0' and '1'");
   }
 
-  // big-endian unpack
-  const n =
-    (BigInt(corrected[0]) << 48n) |
-    (BigInt(corrected[1]) << 40n) |
-    (BigInt(corrected[2]) << 32n) |
-    (BigInt(corrected[3]) << 24n) |
-    (BigInt(corrected[4]) << 16n) |
-    (BigInt(corrected[5]) << 8n) |
-    BigInt(corrected[6]);
+  const payload = BigInt("0b" + bits);
+
+  const schemaVersion = Number((payload >> 60n) & 0xfn);
+  const issuerId = Number((payload >> 48n) & 0xfffn);
+  const modelId = Number((payload >> 32n) & 0xffffn);
+  const modelVersionId = Number((payload >> 16n) & 0xffffn);
+  const keyId = Number((payload >> 8n) & 0xffn);
+  const crc = Number(payload & 0xffn);
+
+  // Recompute CRC over the high 56 bits, packed big-endian into 7 bytes.
+  const high56 = payload >> 8n;
+  const high56Bytes = new Uint8Array(7);
+  for (let i = 0; i < 7; i++) {
+    // Most-significant byte first.
+    const shift = BigInt((6 - i) * 8);
+    high56Bytes[i] = Number((high56 >> shift) & 0xffn);
+  }
+  const expectedCrc = crc8(high56Bytes);
 
   return {
-    schemaVersion: Number((n >> 52n) & 0xfn),
-    issuerId: Number((n >> 40n) & 0xfffn),
-    modelId: Number((n >> 24n) & 0xffffn),
-    modelVersionId: Number((n >> 8n) & 0xffffn),
-    keyId: Number(n & 0xffn),
-    codeValid,
-    errorsCorrected,
-    rawPayloadHex: Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join(""),
+    schemaVersion,
+    issuerId,
+    modelId,
+    modelVersionId,
+    keyId,
+    crc,
+    crcValid: crc === expectedCrc,
+    rawPayloadHex: "0x" + payload.toString(16).padStart(16, "0"),
   };
-}
-
-export function bitsToBytes(bits: string): Uint8Array {
-  if (bits.length !== TAG_BITS) throw new Error("expected 64 bits");
-  const out = new Uint8Array(8);
-  for (let i = 0; i < TAG_BITS; i++) {
-    if (bits[i] === "1") out[Math.floor(i / 8)] |= 1 << (7 - (i % 8));
-  }
-  return out;
-}
-
-export function decodeTag(tag: string): string | null {
-  if (!tag.startsWith(TAG_START) || !tag.endsWith(TAG_END)) return null;
-  const body = tag.slice(TAG_START.length, tag.length - TAG_END.length);
-  if (body.length !== TAG_BITS) return null;
-  let out = "";
-  for (const c of body) {
-    if (c === ZWSP) out += "0";
-    else if (c === ZWNJ) out += "1";
-    else return null;
-  }
-  return out;
-}
+};

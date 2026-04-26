@@ -3,34 +3,49 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.venv/
 .Python
-build/
-dist/
-*.egg-info/
+.venv/
+venv/
+env/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
 .coverage
 htmlcov/
+*.egg-info/
+build/
+dist/
 
 # Node
 node_modules/
 frontend/dist/
 extension/dist/
-*.tsbuildinfo
-.DS_Store
+*.log
 
-# Environment
+# Local env
 .env
-*.env.local
+.env.local
+frontend/.env
+frontend/.env.local
+.do/app.generated.yaml
 
-# Data / runtime
+# Database
 data/*.db
-data/*.json
-!data/.gitkeep
-adversarial_report.json
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/solana-keypair.json
 
 # IDE
-.idea/
 .vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# uv
+uv.lock
+
+# Coverage
+coverage.xml
+.coverage.*

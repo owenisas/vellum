@@ -1,31 +1,54 @@
-import { Route, Routes } from "react-router-dom";
-
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { BrowserRouter, Route, Routes } from "react-router";
 import { AppShell } from "./layout/AppShell";
-import { Chain } from "./pages/Chain";
-import { Companies } from "./pages/Companies";
-import { Dashboard } from "./pages/Dashboard";
-import { DemoOverview } from "./pages/DemoOverview";
-import { GenerateAndAnchor } from "./pages/GenerateAndAnchor";
-import { GuidedDemo } from "./pages/GuidedDemo";
 import { Landing } from "./pages/Landing";
+import { Dashboard } from "./pages/Dashboard";
+import { GenerateAndAnchor } from "./pages/GenerateAndAnchor";
 import { Verify } from "./pages/Verify";
+import { Companies } from "./pages/Companies";
+import { Chain } from "./pages/Chain";
+import { GuidedDemo } from "./pages/GuidedDemo";
+import { DemoOverview } from "./pages/DemoOverview";
+import { AuthGuard } from "./auth/AuthGuard";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
-export default function App() {
+export function App() {
   return (
-    <ErrorBoundary>
-      <AppShell>
+    <BrowserRouter>
+      <ErrorBoundary>
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/generate" element={<GenerateAndAnchor />} />
-          <Route path="/verify" element={<Verify />} />
-          <Route path="/companies" element={<Companies />} />
-          <Route path="/chain" element={<Chain />} />
-          <Route path="/demo" element={<GuidedDemo />} />
-          <Route path="/about" element={<DemoOverview />} />
+          <Route element={<AppShell />}>
+            <Route index element={<Landing />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route
+              path="generate"
+              element={
+                <AuthGuard>
+                  <GenerateAndAnchor />
+                </AuthGuard>
+              }
+            />
+            <Route path="verify" element={<Verify />} />
+            <Route
+              path="companies"
+              element={
+                <AuthGuard>
+                  <Companies />
+                </AuthGuard>
+              }
+            />
+            <Route path="chain" element={<Chain />} />
+            <Route
+              path="demo"
+              element={
+                <AuthGuard>
+                  <GuidedDemo />
+                </AuthGuard>
+              }
+            />
+            <Route path="about" element={<DemoOverview />} />
+          </Route>
         </Routes>
-      </AppShell>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }

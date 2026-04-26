@@ -1,69 +1,62 @@
-# Veritext Architecture
-
-## High-level flow
+# Architecture
 
 ```
-┌─────────────────────┐
-│  React SPA (Vite)   │  signs bundles via ethers.js EIP-712
-└──────────┬──────────┘
-           │ HTTPS + Auth0 JWT
-           ▼
-┌─────────────────────┐         ┌──────────────────────┐
-│  veritext-server    │ ◄─────► │  Auth0 (JWKS, JWT)   │
-│  (FastAPI)          │         └──────────────────────┘
-│  ┌───────────────┐  │
-│  │ ChatService   │  │
-│  │ AnchorService │  │  per_response  ┌──────────────┐
-│  │ ProofBuilder  │ ─┼──────────────► │ Solana devnet│
-│  │ MerkleBatch   │ ─┼──merkle─batch► │ Memo program │
-│  └───────────────┘  │                └──────────────┘
-│         │           │
-│         ▼           │
-│  ┌───────────────┐  │
-│  │  aiosqlite    │  │
-│  │  data/...db   │  │
-│  └───────────────┘  │
-└─────────────────────┘
-           ▲
-           │
-┌──────────┴──────────┐
-│  Chrome MV3 ext     │  stateless detector (no backend call)
-│  + veritext-verify  │
-│  CLI                │
-└─────────────────────┘
+React SPA (frontend/) ─┐
+                       ├─►  vellum-server (FastAPI)  ──►  Auth0 (JWT)
+Chrome MV3 ext ────────┘                                ├──►  LLM Providers (Google/MiniMax/Bedrock)
+                                                        ├──►  Solana Devnet (Memo program)
+                                                        └──►  SQLite (aiosqlite)
 ```
 
 ## Layers
 
-1. **Watermark library** (`packages/watermark/`) — pure Python, zero deps. Encodes 64-bit BCH-protected payload as invisible Unicode. Optional AES-128-CCM encryption.
-2. **Generation-time layer** (`packages/genwatermark/`) — SynthID-Text wrapper, defense in depth. Optional, gated by `GENWATERMARK_ENABLED`.
-3. **Merkle batching** (`packages/merklebatch/`) — leaf → tree → inclusion proof. Used by Solana batched anchoring.
-4. **Backend** (`src/veritext/`) — FastAPI app factory, layered services with dependency injection.
-5. **Frontend** (`frontend/`) — React 19 SPA with EIP-712 signing in browser via ethers.js.
-6. **Extension** (`extension/`) — Chrome MV3 detection-only.
-7. **CLI** (`src/veritext/cli/verify.py`) — stateless verifier; takes a bundle JSON, returns pass/fail.
+| Layer | Module | Responsibility |
+|---|---|---|
+| Configuration | `vellum.config` | Pydantic settings, enums, validation |
+| Auth | `vellum.auth` | Auth0 JWT decode + ECDSA sign/verify/recover |
+| Models | `vellum.models` | Pydantic request/response shapes |
+| Providers | `vellum.providers` | LLM provider Protocol + impls (Google, MiniMax, Bedrock, Fixture) |
+| Chain | `vellum.chain` | ChainBackend Protocol + Simulated/Solana impls |
+| Database | `vellum.db` | aiosqlite connection + repositories |
+| Services | `vellum.services` | Chat, Anchor, Signing, Watermark, ProofBundleBuilder |
+| API | `vellum.api` | FastAPI routers grouped by domain |
+| Middleware | `vellum.middleware` | Structured logging, error handling |
 
-## Configuration surface
+## Design rules
 
-All configuration via Pydantic `BaseSettings` (env-driven). See `.env.example`.
+1. **Protocol over inheritance** — `LLMProvider` and `ChainBackend` are runtime-checkable
+   Protocols. New providers/backends drop in without touching existing code.
+2. **Async-first** — repositories use `aiosqlite`; outbound HTTP uses `httpx`; LLM SDK calls
+   wrapped in `asyncio.to_thread` so they don't block the event loop.
+3. **Auth0 + ECDSA orthogonal** — JWT answers "who is calling?", ECDSA answers "did this
+   entity sign these exact bytes?". Both can be disabled independently.
+4. **Demo-first** — empty `AUTH0_DOMAIN` returns a `DEMO_IDENTITY` with all permissions;
+   `DEMO_MODE=fixture` swaps any LLM call for a deterministic fixture provider. Both work
+   without external services.
+5. **Structured logging** — every request gets a `structlog` log line; errors get a
+   correlation `error_id` returned to the client.
 
-Key flags:
-- `CHAIN_BACKEND=simulated|solana`
-- `ANCHOR_STRATEGY=per_response|merkle_batch`
-- `PAYLOAD_VISIBILITY=plaintext|encrypted`
-- `WATERMARK_INJECTION_MODE=whitespace|grapheme`
-- `GENWATERMARK_ENABLED=false|true`
-- `JWKS_CACHE_TTL_SECONDS=300`
+## Request flow: anchor
 
-## Cryptographic primitives
+```
+POST /api/anchor  (JWT: anchor:create)
+  └► AnchorService.anchor()
+       ├► SigningService.verify(hash, sig, issuer_id)        # ECDSA
+       ├► ResponseRepository.save(...)                       # raw + watermarked text
+       ├► ChainBackend.anchor(hash, issuer_id, sig, meta)    # SimulatedChain | SolanaChain
+       ├► Watermarker.detect(text)                           # extract watermark info
+       └► ProofBundleBuilder.build(receipt, company, wm, sig) # Proof Bundle v2
+  └► Returns AnchorResponse
+```
 
-- **Hash**: SHA-256
-- **Signature**: ECDSA secp256k1 — EIP-712 typed-data primary, EIP-191 personal_sign fallback
-- **FEC**: BCH(63,16) — pure-Python implementation in `packages/watermark/_bch.py`
-- **Symmetric**: AES-128-CCM (for encrypted-payload mode)
-- **Canonical JSON**: RFC 8785 (JCS)
-- **Borsh schema**: versioned with leading `v: u8 = 2` byte
+## Request flow: verify
 
-## Threat model and compliance
-
-See `THREAT_MODEL.md` and `COMPLIANCE.md`.
+```
+POST /api/verify  (public)
+  └► AnchorService.verify(text)
+       ├► hash_text(text)                                    # SHA-256
+       ├► ChainBackend.lookup(hash)                          # find original anchor
+       ├► CompanyRepository.get_by_issuer(record.issuer_id)
+       └► ProofBundleBuilder.build(...)                      # rebuild bundle from chain
+  └► Returns VerifyResponse
+```

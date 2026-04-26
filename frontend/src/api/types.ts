@@ -1,17 +1,51 @@
-export interface ChatRequest {
-  prompt: string;
-  model?: string;
-  provider?: string;
-  watermark?: boolean;
-  watermark_params?: WatermarkParams;
+/** Shared API response types — keep in sync with src/vellum/models. */
+
+export interface HealthResponse {
+  status: string;
+  demo_mode: "live" | "fixture";
+  chain_backend: "simulated" | "solana";
+  solana_cluster: string | null;
+  auth0_enabled: boolean;
+  google_api_key_configured: boolean;
+  minimax_api_key_configured: boolean;
+  chain: { length: number; valid: boolean; message: string };
 }
 
-export interface WatermarkParams {
-  issuer_id: number;
-  model_id: number;
-  model_version_id: number;
+export interface ModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+}
+
+export interface ModelsResponse {
+  google: ModelInfo[];
+  minimax: ModelInfo[];
+  bedrock: ModelInfo[];
+}
+
+export interface WmParams {
+  schema_version?: number;
+  issuer_id?: number;
+  model_id?: number;
+  model_version_id?: number;
   key_id?: number;
   repeat_interval_tokens?: number;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system" | "model";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  provider?: string;
+  model?: string;
+  system?: string;
+  max_tokens?: number;
+  temperature?: number;
+  watermark?: boolean;
+  wm_params?: WmParams;
 }
 
 export interface ChatResponse {
@@ -25,15 +59,74 @@ export interface ChatResponse {
   error?: string;
 }
 
-export interface AnchorRequest {
+export interface WatermarkPayload {
+  schema_version: number;
+  issuer_id: number;
+  model_id: number;
+  model_version_id: number;
+  key_id: number;
+  crc_valid: boolean;
+  raw_payload_hex: string;
+}
+
+export interface WatermarkInfo {
+  watermarked: boolean;
+  tag_count: number;
+  valid_count: number;
+  invalid_count: number;
+  payloads: WatermarkPayload[];
+}
+
+export interface DetectResponse {
   text: string;
-  raw_text?: string;
+  watermark: WatermarkInfo;
+}
+
+export interface ApplyResponse {
+  text: string;
+  watermarked: string;
+  payload_hex: string;
+}
+
+export interface StripResponse {
+  text: string;
+  stripped: string;
+  removed: number;
+}
+
+export interface CompanyResponse {
+  id: number;
+  name: string;
+  issuer_id: number;
+  eth_address: string;
+  public_key_hex: string;
+  active: boolean;
+  created_at: string | null;
+}
+
+export interface CreateCompanyResponse extends CompanyResponse {
+  private_key_hex: string | null;
+  note: string | null;
+}
+
+export interface ChainBlock {
+  block_num: number;
+  prev_hash: string;
+  tx_hash: string;
+  data_hash: string;
   issuer_id: number;
   signature_hex: string;
-  sig_scheme: "eip712" | "eip191_personal_sign";
-  timestamp: number;
-  bundle_nonce_hex?: string;
-  metadata?: Record<string, unknown>;
+  timestamp: string;
+  solana_tx_signature: string | null;
+}
+
+export interface ChainStatus {
+  length: number;
+  valid: boolean;
+  message: string;
+  backend: string;
+  latest_block_num: number | null;
+  latest_data_hash: string | null;
 }
 
 export interface ChainReceipt {
@@ -42,10 +135,19 @@ export interface ChainReceipt {
   data_hash: string;
   issuer_id: number;
   timestamp: string;
-  solana_tx_signature?: string;
-  merkle_root?: string;
-  leaf_index?: number;
-  inclusion_proof?: { hash: string; side: "L" | "R" }[];
+  solana_tx_signature: string | null;
+}
+
+export interface ProofBundleV2 {
+  spec: string;
+  bundle_id: string;
+  hashing: Record<string, unknown>;
+  issuer: Record<string, unknown>;
+  agent_action?: Record<string, unknown> | null;
+  signature: Record<string, unknown>;
+  watermark: Record<string, unknown>;
+  anchors: Array<Record<string, unknown>>;
+  verification_hints: Record<string, unknown>;
 }
 
 export interface AnchorResponse {
@@ -54,78 +156,55 @@ export interface AnchorResponse {
   sha256_hash: string;
   chain_receipt: ChainReceipt;
   proof_bundle_v2: ProofBundleV2;
-  bundle_status: "ok" | "pending_batch";
-}
-
-export interface ProofBundleV2 {
-  spec: "veritext-proof-bundle/v2";
-  bundle_id: string;
-  signed_fields: string[];
-  hashing: { algorithm: "sha256"; text_hash: string; input_encoding: "utf-8"; normalization: "none" };
-  issuer: {
-    issuer_id: number;
-    name: string;
-    eth_address: string;
-    public_key_hex: string;
-    current_key_id: number;
-    key_history: unknown[];
-  };
-  signature: {
-    scheme: "eip712" | "eip191_personal_sign";
-    canonicalization: "rfc8785";
-    signed_payload: string;
-    signature_hex: string;
-    recoverable_address: boolean;
-    typed_data?: unknown;
-  };
-  watermark: {
-    detected: boolean;
-    injection_mode: "whitespace" | "grapheme";
-    generation_time?: { type: string; present: boolean; detector_score: number; p_value: number } | null;
-    tag_count: number;
-    valid_count: number;
-    invalid_count: number;
-    payloads: WatermarkPayloadInfo[];
-  };
-  encrypted_payload_metadata?: { key_kid: number; algorithm: "aes-128-ccm" } | null;
-  anchors: AnchorInfo[];
-  verification_hints: { chain_type: string; rpc_url?: string; explorer_url?: string; merkle_root?: string };
-}
-
-export interface WatermarkPayloadInfo {
-  schema_version: number;
-  issuer_id: number;
-  model_id: number;
-  model_version_id: number;
-  key_id: number;
-  fec: { type: string; errors_corrected: number; code_valid: boolean };
-  encrypted: boolean;
-  nonce_hex?: string;
-  raw_payload_hex: string;
-}
-
-export interface AnchorInfo {
-  type: "solana_per_response" | "solana_merkle" | "simulated_chain";
-  tx_hash?: string;
-  block_num?: number;
-  timestamp: string;
-  memo_encoding?: "borsh" | "json";
-  memo_borsh_hex?: string;
-  merkle_root?: string;
-  inclusion_proof?: { hash: string; side: "L" | "R" }[];
-  leaf_index?: number;
 }
 
 export interface VerifyResponse {
   verified: boolean;
   sha256_hash: string;
-  issuer_id?: number;
-  company?: string;
-  eth_address?: string;
-  block_num?: number;
-  tx_hash?: string;
-  timestamp?: string;
-  watermark: { present: boolean; unicode: { detected: boolean; tag_count: number }; statistical: unknown };
-  proof_bundle_v2?: ProofBundleV2;
-  reason?: string;
+  issuer_id: number | null;
+  company: string | null;
+  eth_address: string | null;
+  block_num: number | null;
+  tx_hash: string | null;
+  timestamp: string | null;
+  watermark: WatermarkInfo;
+  proof_bundle_v2: ProofBundleV2 | null;
+  reason: string | null;
+}
+
+export interface DemoScenarioResponse {
+  company: {
+    name: string;
+    private_key_hex: string;
+    public_key_hex: string;
+    eth_address: string;
+  };
+  text: string;
+  watermarked_text: string;
+  watermark: WatermarkInfo;
+  signature_hex: string;
+  sha256_hash: string;
+  instructions: string[];
+}
+
+export interface SolanaBalanceResponse {
+  address: string;
+  cluster: string;
+  balance_sol: number;
+  balance_lamports: number;
+}
+
+export interface SolanaVerifyResponse {
+  verified: boolean;
+  tx_signature: string;
+  slot: number | null;
+  memo_data: Record<string, unknown> | null;
+  explorer_url: string | null;
+  reason: string | null;
+}
+
+export interface ApiErrorBody {
+  detail?: string;
+  error?: string;
+  error_id?: string;
 }

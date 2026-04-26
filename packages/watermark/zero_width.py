@@ -1,132 +1,181 @@
-"""
-Veritext zero-width Unicode encoding/decoding.
-
-Symbols:
-    U+2063 (INVISIBLE SEPARATOR)     — tag start delimiter
-    U+2064 (INVISIBLE PLUS)          — tag end delimiter
-    U+200B (ZERO-WIDTH SPACE)        — binary 0
-    U+200C (ZERO-WIDTH NON-JOINER)   — binary 1
-
-Each tag = start + 64 bits + end = 66 invisible chars.
-
-Injection modes (improvement #14):
-    - whitespace: inject after every Nth whitespace token (default).
-    - grapheme: inject after every Nth grapheme cluster (handles CJK / Thai /
-      Arabic where whitespace tokens are not natural). Lazy-imports the
-      `regex` module.
-"""
+"""Zero-width Unicode encoding/decoding and tag injection."""
 
 from __future__ import annotations
 
-from enum import Enum
+import re
+from dataclasses import dataclass, field
 
-TAG_START = "⁣"
-TAG_END = "⁤"
-ZWSP = "​"   # binary 0
-ZWNJ = "‌"   # binary 1
-
-ALL_INVISIBLES = (TAG_START, TAG_END, ZWSP, ZWNJ)
-PAYLOAD_BITS = 64
+from .config import TagConfig
+from .payload import Payload, from_bits, pack, to_bits, to_hex, unpack
 
 
-class InjectionMode(str, Enum):
-    WHITESPACE = "whitespace"
-    GRAPHEME = "grapheme"
+def encode_bits(bits: str, tag: TagConfig) -> str:
+    """Encode a binary string as zero-width characters."""
+    if any(c not in "01" for c in bits):
+        raise ValueError("bits must contain only '0' and '1'")
+    return "".join(tag.bit_one if b == "1" else tag.bit_zero for b in bits)
 
 
-def encode_bits(bits: str) -> str:
-    """Encode a 64-bit string into the zero-width tag form."""
-    if len(bits) != PAYLOAD_BITS:
-        raise ValueError(f"expected {PAYLOAD_BITS} bits, got {len(bits)}")
-    body = "".join(ZWNJ if c == "1" else ZWSP for c in bits)
-    return TAG_START + body + TAG_END
-
-
-def decode_tag(tag: str) -> str | None:
-    """Decode a zero-width tag back to a 64-bit string, or None on malformed."""
-    if not tag.startswith(TAG_START) or not tag.endswith(TAG_END):
-        return None
-    body = tag[1:-1]
-    if len(body) != PAYLOAD_BITS:
-        return None
-    out = []
-    for ch in body:
-        if ch == ZWSP:
+def decode_bits(text: str, tag: TagConfig) -> str:
+    """Inverse of encode_bits — extract '0'/'1' from zero-width characters."""
+    out: list[str] = []
+    for c in text:
+        if c == tag.bit_zero:
             out.append("0")
-        elif ch == ZWNJ:
+        elif c == tag.bit_one:
             out.append("1")
-        else:
-            return None
     return "".join(out)
 
 
-def find_tags(text: str) -> list[tuple[int, int, str]]:
+def build_tag(payload64: int, tag: TagConfig) -> str:
+    """Wrap the payload bits between the tag start/end delimiters."""
+    bits = to_bits(payload64, tag.payload_bits)
+    return tag.tag_start + encode_bits(bits, tag) + tag.tag_end
+
+
+@dataclass(frozen=True)
+class TagMatch:
+    """A single watermark tag found in a body of text."""
+
+    start_index: int  # Index of tag_start in original text
+    end_index: int  # Index after tag_end
+    raw_bits: str
+    payload64: int
+    payload: Payload
+
+
+@dataclass
+class TagInjector:
+    """Streaming-friendly tag injector.
+
+    Counts whitespace-delimited tokens and inserts a tag after the next whitespace
+    boundary every `repeat_interval_tokens` tokens. On finalize, ensures at least
+    one tag is emitted for non-trivial input.
     """
-    Locate all watermark tags in `text`. Returns list of (start_idx, end_idx,
-    tag_string). Includes both well-formed and malformed-but-delimited tags;
-    callers decide which to keep.
-    """
-    out: list[tuple[int, int, str]] = []
-    i = 0
-    n = len(text)
-    while i < n:
-        if text[i] == TAG_START:
-            j = text.find(TAG_END, i + 1)
-            if j == -1:
-                break
-            out.append((i, j + 1, text[i : j + 1]))
-            i = j + 1
-        else:
-            i += 1
-    return out
 
+    payload64: int
+    tag: TagConfig
+    repeat_interval_tokens: int = 160
 
-def strip_all(text: str) -> str:
-    """Remove every Veritext tag from `text`. Other zero-width chars are kept."""
-    parts: list[str] = []
-    last = 0
-    for start, end, _ in find_tags(text):
-        parts.append(text[last:start])
-        last = end
-    parts.append(text[last:])
-    return "".join(parts)
+    _buffer: str = field(default="", init=False, repr=False)
+    _token_count: int = field(default=0, init=False, repr=False)
+    _tags_emitted: int = field(default=0, init=False, repr=False)
+    _total_chars: int = field(default=0, init=False, repr=False)
+    _full_text: list[str] = field(default_factory=list, init=False, repr=False)
 
+    def inject_delta(self, chunk: str, finalize: bool = False) -> str:
+        """Process a streamed chunk and return the equivalent watermarked chunk.
 
-def _grapheme_iter(text: str):
-    """Yield (start_idx, end_idx) of each grapheme cluster. Lazy-imports `regex`."""
-    try:
-        import regex  # type: ignore
-    except ImportError as exc:
-        raise RuntimeError(
-            "`regex` package required for grapheme mode. Install veritext or "
-            "`pip install regex`."
-        ) from exc
-    for m in regex.finditer(r"\X", text):
-        yield m.start(), m.end()
+        State is preserved across calls so a streaming response can be tagged
+        incrementally without disturbing token boundaries.
+        """
+        if not chunk and not finalize:
+            return ""
 
+        out: list[str] = []
+        self._buffer += chunk
+        self._full_text.append(chunk)
 
-def split_for_injection(text: str, mode: InjectionMode) -> list[tuple[int, int]]:
-    """
-    Return a list of (start, end) intervals of "tokens" — units after which a
-    tag may be inserted. For whitespace mode, tokens are runs of non-whitespace.
-    For grapheme mode, tokens are grapheme clusters.
-    """
-    if mode == InjectionMode.WHITESPACE:
-        spans: list[tuple[int, int]] = []
+        # Walk the buffer character by character, emit chars + tags at whitespace breaks
         i = 0
-        n = len(text)
-        while i < n:
-            while i < n and text[i].isspace():
-                i += 1
-            if i >= n:
-                break
-            j = i
-            while j < n and not text[j].isspace():
-                j += 1
-            spans.append((i, j))
-            i = j
-        return spans
-    elif mode == InjectionMode.GRAPHEME:
-        return list(_grapheme_iter(text))
-    else:
-        raise ValueError(f"unknown injection mode: {mode}")
+        while i < len(self._buffer):
+            c = self._buffer[i]
+            out.append(c)
+            self._total_chars += 1
+            if c.isspace():
+                self._token_count += 1
+                if (
+                    self._token_count > 0
+                    and self._token_count % self.repeat_interval_tokens == 0
+                ):
+                    out.append(build_tag(self.payload64, self.tag))
+                    self._tags_emitted += 1
+            i += 1
+
+        # Reset buffer; we've emitted everything we processed
+        self._buffer = ""
+
+        if finalize and self._tags_emitted == 0:
+            full_text = "".join(self._full_text)
+            if len(full_text) >= 20:
+                # Force one tag at ~40% position to guarantee detection
+                emitted = "".join(out)
+                pos = max(1, int(len(emitted) * 0.4))
+                # Try to land on a whitespace boundary at/after pos
+                while pos < len(emitted) and not emitted[pos].isspace():
+                    pos += 1
+                if pos >= len(emitted):
+                    pos = len(emitted)
+                tag_str = build_tag(self.payload64, self.tag)
+                out = [emitted[:pos], tag_str, emitted[pos:]]
+                self._tags_emitted += 1
+
+        return "".join(out)
+
+    def finalize(self) -> str:
+        return self.inject_delta("", finalize=True)
+
+
+def find_tags(text: str, tag: TagConfig) -> list[TagMatch]:
+    """Locate all watermark tags in text.
+
+    Returns matches in document order. Invalid CRC payloads are still returned
+    so callers can report them as `invalid_count`.
+    """
+    if not text:
+        return []
+
+    pattern = re.compile(
+        re.escape(tag.tag_start)
+        + r"([" + re.escape(tag.bit_zero) + re.escape(tag.bit_one) + r"]+?)"
+        + re.escape(tag.tag_end),
+    )
+
+    matches: list[TagMatch] = []
+    for m in pattern.finditer(text):
+        bit_chars = m.group(1)
+        bits = decode_bits(bit_chars, tag)
+        if len(bits) != tag.payload_bits:
+            continue
+        try:
+            payload64 = from_bits(bits)
+        except ValueError:
+            continue
+        matches.append(
+            TagMatch(
+                start_index=m.start(),
+                end_index=m.end(),
+                raw_bits=bits,
+                payload64=payload64,
+                payload=unpack(payload64),
+            ),
+        )
+    return matches
+
+
+def strip_tags(text: str, tag: TagConfig) -> str:
+    """Remove every watermark tag from text. Leaves the rest of the string untouched."""
+    if not text:
+        return text
+    pattern = re.compile(
+        re.escape(tag.tag_start)
+        + r"[" + re.escape(tag.bit_zero) + re.escape(tag.bit_one) + r"]*?"
+        + re.escape(tag.tag_end),
+    )
+    return pattern.sub("", text)
+
+
+__all__ = [
+    "TagInjector",
+    "TagMatch",
+    "build_tag",
+    "decode_bits",
+    "encode_bits",
+    "find_tags",
+    "from_bits",
+    "pack",
+    "strip_tags",
+    "to_bits",
+    "to_hex",
+    "unpack",
+]
