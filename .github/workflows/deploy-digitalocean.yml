@@ -70,7 +70,7 @@ jobs:
           image_tag="${GITHUB_SHA}"
 
           if ! doctl registry get "${registry_name}" >/dev/null 2>&1; then
-            doctl registry create "${registry_name}" --region nyc
+            doctl registry create "${registry_name}" --region nyc3
           fi
 
           doctl registry login --expiry-seconds 1200
