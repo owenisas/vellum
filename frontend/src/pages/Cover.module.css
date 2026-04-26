@@ -3,7 +3,9 @@
   min-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* keep horizontal paint contained; do not clip vertical (breaks layout + scroll with Lenis) */
+  overflow-x: hidden;
+  overflow-y: visible;
   isolation: isolate;
   padding-bottom: var(--s-7);
 }
@@ -13,6 +15,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  overflow: hidden;
 }
 .vignette {
   position: absolute;
@@ -44,11 +47,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   gap: var(--s-9);
-  align-items: end;
+  /* bottom-aligning both columns shoves CTAs against the next section; top-align for clear rhythm */
+  align-items: start;
   flex: 1;
+  min-height: 0;
   padding-top: var(--s-7);
   padding-bottom: var(--s-9);
-  min-height: 70vh;
 }
 .heroLeft {
   display: flex;
@@ -85,6 +89,10 @@
   gap: var(--s-3);
   flex-wrap: wrap;
   margin-top: var(--s-6);
+  /* keep CTAs above the foot rule when transforms / rounding interact with borders */
+  position: relative;
+  z-index: 1;
+  padding-bottom: var(--s-1);
 }
 
 /* — Right rail — */
@@ -126,13 +134,16 @@
 
 /* — Foot — */
 .foot {
+  position: relative;
+  z-index: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-top: var(--s-6);
   padding-bottom: var(--s-5);
-  margin-top: var(--s-7);
+  margin-top: var(--s-9);
   border-top: 1px solid var(--hairline);
+  background: var(--bg);
 }
 .footMono {
   font-family: var(--font-mono);
@@ -153,7 +164,7 @@
 }
 
 @media (max-width: 880px) {
-  .hero { grid-template-columns: 1fr; gap: var(--s-7); }
+  .hero { grid-template-columns: 1fr; gap: var(--s-7); min-height: 0; }
   .rail {
     border-left: 0;
     padding-left: 0;
