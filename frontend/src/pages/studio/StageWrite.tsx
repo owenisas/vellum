@@ -7,7 +7,7 @@ import { Pill } from "../../components/ui/Pill";
 import { MagneticButton } from "../../components/ui/MagneticButton";
 import { EditorialCaption } from "../../components/ui/EditorialCaption";
 import { VisualizedText } from "./VisualizedText";
-import { ease } from "../../lib/motion";
+import { ease, prefersReducedMotion } from "../../lib/motion";
 import styles from "./Stage.module.css";
 
 const INVISIBLE = /[\u200B\u200C\u2063\u2064]/g;
@@ -72,8 +72,24 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
       flow.setRawText(res.raw_text);
       const h = await sha256Hex(res.text);
       flow.setTextHash(h);
-      // Defer so #stage-sign mounts, then follow the demo to Sign (matches Gemini / Write flow)
-      window.setTimeout(() => flow.setStage("sign"), 220);
+      // Scroll to the result block; user reaches Sign on their own (scroll or "Continue to sign")
+      const scrollTo = () => {
+        const el = document.getElementById("write-generated-output");
+        if (el) {
+          el.scrollIntoView({
+            behavior: prefersReducedMotion() ? "auto" : "smooth",
+            block: "start",
+          });
+        }
+      };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollTo();
+          if (!document.getElementById("write-generated-output")) {
+            setTimeout(scrollTo, 150);
+          }
+        });
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -160,6 +176,7 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
 
         {flow.generatedText && (
           <motion.div
+            id="write-generated-output"
             className={styles.output}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
