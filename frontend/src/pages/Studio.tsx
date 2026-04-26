@@ -78,6 +78,8 @@ export function Studio() {
   const [model, setModel] = useState<string>("gemma-4-31b-it");
   const [generatedText, setGeneratedText] = useState<string>("");
   const [rawText, setRawText] = useState<string>("");
+  const [thinkingText, setThinkingText] = useState<string>("");
+  const [rawThinkingText, setRawThinkingText] = useState<string>("");
   const [textHash, setTextHash] = useState<string>("");
   const [issuerId, setIssuerId] = useState<number | "">("");
   const [privateKey, setPrivateKey] = useState<string>("");
@@ -103,6 +105,8 @@ export function Studio() {
       model, setModel,
       generatedText, setGeneratedText,
       rawText, setRawText,
+      thinkingText, setThinkingText,
+      rawThinkingText, setRawThinkingText,
       textHash, setTextHash,
       issuerId, setIssuerId,
       privateKey, setPrivateKey,
@@ -119,7 +123,7 @@ export function Studio() {
       verifyTampered, setVerifyTampered,
       tamperedText, setTamperedText,
     }),
-    [stage, prompt, provider, model, generatedText, rawText, textHash, issuerId, privateKey, signerMode, includeEvmProof, includeSolanaProof, solanaTxSignature, walletProofs, signature, signedAt, nonceHex, bundle, verifyClean, verifyTampered, tamperedText],
+    [stage, prompt, provider, model, generatedText, rawText, thinkingText, rawThinkingText, textHash, issuerId, privateKey, signerMode, includeEvmProof, includeSolanaProof, solanaTxSignature, walletProofs, signature, signedAt, nonceHex, bundle, verifyClean, verifyTampered, tamperedText],
   );
 
   useEffect(() => {

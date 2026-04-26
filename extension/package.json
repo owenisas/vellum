@@ -5,12 +5,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run clean && tsc -p . --outDir dist && cp manifest.json dist/ && cp popup/popup.html popup/popup.css dist/popup/ && cp -R icons dist/icons",
+    "build": "npm run clean && npm run check && mkdir -p dist/content dist/background dist/popup && esbuild content/content.ts --bundle --format=iife --target=chrome120 --outfile=dist/content/content.js && esbuild background/background.ts --bundle --format=esm --target=chrome120 --outfile=dist/background/background.js && esbuild popup/popup.ts --bundle --format=esm --target=chrome120 --outfile=dist/popup/popup.js && cp manifest.json dist/ && cp popup/popup.html popup/popup.css dist/popup/ && cp -R icons dist/icons",
     "check": "tsc -p . --noEmit",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "typescript": "~5.9.0",
-    "@types/chrome": "^0.0.270"
+    "@types/chrome": "^0.0.270",
+    "esbuild": "^0.28.0",
+    "typescript": "~5.9.0"
   }
 }

@@ -23,18 +23,20 @@ class GoogleProvider:
 
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
-        self._genai = None
+        self._client = None
+        self._types = None
 
     def _ensure_client(self):
-        if self._genai is None:
+        if self._client is None:
             try:
-                import google.generativeai as genai  # type: ignore[import-not-found]
+                from google import genai  # type: ignore[import-not-found]
+                from google.genai import types  # type: ignore[import-not-found]
 
-                genai.configure(api_key=self.api_key)
-                self._genai = genai
+                self._client = genai.Client(api_key=self.api_key)
+                self._types = types
             except ImportError as exc:  # pragma: no cover
-                raise RuntimeError("google-generativeai not installed") from exc
-        return self._genai
+                raise RuntimeError("google-genai not installed") from exc
+        return self._client, self._types
 
     @property
     def provider_name(self) -> str:
@@ -45,8 +47,8 @@ class GoogleProvider:
         return [{**m, "provider": "google"} for m in GOOGLE_MODELS]
 
     @staticmethod
-    def _convert_messages(messages: list[dict]) -> list[dict]:
-        out: list[dict] = []
+    def _convert_messages(messages: list[dict], types) -> list:
+        out: list = []
         for msg in messages:
             role = msg.get("role", "user")
             if role == "assistant":
@@ -61,7 +63,12 @@ class GoogleProvider:
                 ]
             else:
                 parts = [{"text": str(content) if content is not None else ""}]
-            out.append({"role": role, "parts": parts})
+            out.append(
+                types.Content(
+                    role=role,
+                    parts=[types.Part(text=str(part.get("text", ""))) for part in parts],
+                )
+            )
         return out
 
     @staticmethod
@@ -87,26 +94,36 @@ class GoogleProvider:
         return {
             "input_tokens": int(getattr(meta, "prompt_token_count", 0) or 0),
             "output_tokens": int(getattr(meta, "candidates_token_count", 0) or 0),
+            "thinking_tokens": int(getattr(meta, "thoughts_token_count", 0) or 0),
         }
 
     async def generate(self, request: GenerateRequest) -> GenerateResponse:
         try:
-            genai = self._ensure_client()
+            client, types = self._ensure_client()
         except RuntimeError as exc:
             return GenerateResponse(provider="google", model=request.model, error=str(exc))
 
-        contents = self._convert_messages(request.messages)
-        config = genai.types.GenerationConfig(
+        contents = self._convert_messages(request.messages, types)
+        system_instruction = (
+            f"{request.system}\n\n"
+            "Return only the user-facing final answer in normal response text. "
+            "Do not include analysis, intent labels, options, or hidden reasoning "
+            "in the final answer; if the model provides thought summaries, return "
+            "them only through the API's thought parts."
+        )
+        config = types.GenerateContentConfig(
             max_output_tokens=request.max_tokens,
             temperature=request.temperature,
+            system_instruction=system_instruction,
+            thinking_config=types.ThinkingConfig(include_thoughts=True),
         )
 
         def _call():
-            model = genai.GenerativeModel(
-                model_name=request.model,
-                system_instruction=request.system,
+            return client.models.generate_content(
+                model=request.model,
+                contents=contents,
+                config=config,
             )
-            return model.generate_content(contents, generation_config=config)
 
         try:
             resp = await asyncio.to_thread(_call)

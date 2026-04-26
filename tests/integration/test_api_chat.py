@@ -28,6 +28,8 @@ async def test_chat_returns_watermarked_text(client):
     assert data["provider"] == "fixture"
     assert data["model"] == "fixture-default"
     assert "Placeholder response for the demo" in data["raw_text"]
+    assert "Placeholder reasoning summary" in data["raw_thinking"]
+    assert data["thinking"] != data["raw_thinking"]
 
 
 async def test_detect_finds_watermark(client):
@@ -74,3 +76,4 @@ async def test_chat_can_disable_watermark(client):
     data = resp.json()
     assert data["watermarked"] is False
     assert data["text"] == data["raw_text"]
+    assert data["thinking"] == data["raw_thinking"]

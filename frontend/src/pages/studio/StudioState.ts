@@ -23,6 +23,10 @@ export interface StudioFlow {
   setGeneratedText: (t: string) => void;
   rawText: string;
   setRawText: (t: string) => void;
+  thinkingText: string;
+  setThinkingText: (t: string) => void;
+  rawThinkingText: string;
+  setRawThinkingText: (t: string) => void;
   textHash: string;
   setTextHash: (h: string) => void;
   issuerId: number | "";

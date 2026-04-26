@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from .base import GenerateRequest, GenerateResponse
 
-
 FIXTURE_TEXT = (
     "Placeholder response for the demo: this deterministic text stands in for a "
     "model answer when you click a Try one prompt. It can still be watermarked, "
     "signed, anchored, and verified, but it does not call Google or any external "
     "model API. Type your own prompt to use the real Gemma 4 31B path."
+)
+
+FIXTURE_THINKING = (
+    "Placeholder reasoning summary: the demo prompt is routed through the "
+    "fixture provider, so this reasoning text is deterministic and separate "
+    "from the final answer. It is watermarked independently to show that "
+    "reasoning can carry provenance while the final answer remains verifiable "
+    "on its own when copied without this section."
 )
 
 
@@ -48,7 +55,7 @@ class FixtureProvider:
         )
         return GenerateResponse(
             text=text,
-            thinking="fixture-mode",
+            thinking=FIXTURE_THINKING,
             model=request.model or "fixture-default",
             provider="fixture",
             usage={

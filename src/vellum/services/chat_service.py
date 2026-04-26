@@ -45,16 +45,22 @@ class ChatService:
             )
 
         raw_text = result.text
+        raw_thinking = result.thinking
         watermarked_text = raw_text
+        watermarked_thinking = raw_thinking
         applied = False
         if request.watermark and raw_text:
             watermarked_text = self.watermark.apply(raw_text, request.wm_params)
             applied = watermarked_text != raw_text
+        if request.watermark and raw_thinking:
+            watermarked_thinking = self.watermark.apply(raw_thinking, request.wm_params)
+            applied = applied or watermarked_thinking != raw_thinking
 
         return ChatResponse(
             text=watermarked_text,
             raw_text=raw_text,
-            thinking=result.thinking,
+            thinking=watermarked_thinking,
+            raw_thinking=raw_thinking,
             watermarked=applied,
             model=result.model,
             provider=result.provider,

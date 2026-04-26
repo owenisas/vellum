@@ -37,6 +37,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
   const tagCount = (flow.generatedText.match(INVISIBLE) || []).length;
   const visibleCount = flow.generatedText.length - tagCount;
   const tagGroups = Math.ceil(tagCount / 67) || 0;
+  const thinkingTagCount = (flow.thinkingText.match(INVISIBLE) || []).length;
+  const thinkingVisibleCount = flow.thinkingText.length - thinkingTagCount;
   const providerModels = useMemo(() => {
     const data = models.data;
     return {
@@ -73,6 +75,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
     flow.setSignature("");
     flow.setTextHash("");
     flow.setRawText("");
+    flow.setThinkingText("");
+    flow.setRawThinkingText("");
     flow.setWalletProofs([]);
     try {
       const placeholder = isPlaceholderPrompt(flow.prompt);
@@ -85,6 +89,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
         provider: requestProvider,
         model: requestProvider === "fixture" ? undefined : flow.model,
         messages: [{ role: "user", content: flow.prompt }],
+        system:
+          "You are a helpful assistant. Return only the final answer in the visible answer text; do not include analysis, intent labels, or multiple hidden draft options in the final answer.",
         max_tokens: 256,
         temperature: 0.2,
         watermark: true,
@@ -95,6 +101,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
       if (res.error) throw new Error(res.error);
       flow.setGeneratedText(res.text);
       flow.setRawText(res.raw_text);
+      flow.setThinkingText(res.thinking ?? "");
+      flow.setRawThinkingText(res.raw_thinking ?? "");
       const h = await sha256Hex(res.text);
       flow.setTextHash(h);
       // Scroll to the result block; user reaches Sign on their own (scroll or "Continue to sign")
@@ -227,6 +235,24 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
             <div className={styles.outputBox}>
               <VisualizedText text={flow.generatedText} />
             </div>
+            {flow.thinkingText && (
+              <details className={styles.thinkingPanel}>
+                <summary>
+                  Model reasoning
+                  <span>
+                    {thinkingVisibleCount.toLocaleString()} chars · {thinkingTagCount} invisible
+                  </span>
+                </summary>
+                <div className={styles.thinkingBox}>
+                  <VisualizedText text={flow.thinkingText} />
+                </div>
+                <p className={styles.foot}>
+                  Reasoning is watermarked separately. The final answer above
+                  remains independently watermarked and verifiable if this
+                  reasoning section is removed.
+                </p>
+              </details>
+            )}
             <p className={styles.foot}>
               The faint vertical shimmers are zero-width Unicode characters carrying
               your signature. Copy this text anywhere — they travel with it.

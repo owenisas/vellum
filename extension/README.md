@@ -15,8 +15,9 @@ endpoint.
 
 ## Build
 
-The source is `.ts`. A simple `tsc` build emits ES module `.js` files that
-Chrome MV3 can load directly.
+The source is `.ts`. The build type-checks with `tsc`, then bundles the content
+script, background worker, and popup with `esbuild` into the paths declared in
+`manifest.json`.
 
 ```sh
 npm install

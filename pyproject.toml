@@ -15,25 +15,19 @@ dependencies = [
     "python-dotenv>=1.0",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
-
     # Database
     "aiosqlite>=0.21",
-
     # Auth
     "python-jose[cryptography]>=3.3",
     "httpx>=0.28",
-
     # Crypto (ECDSA)
     "eth-account>=0.13",
     "eth-keys>=0.6",
-
-    # LLM Providers
-    "google-generativeai>=0.8",
     "anthropic>=0.42",
     "boto3>=1.35",
-
     # Logging
     "structlog>=24.4",
+    "google-genai>=1.73.1",
 ]
 
 [project.optional-dependencies]

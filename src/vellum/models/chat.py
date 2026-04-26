@@ -40,6 +40,7 @@ class ChatResponse(BaseModel):
     text: str = ""
     raw_text: str = ""
     thinking: str = ""
+    raw_thinking: str = ""
     watermarked: bool = False
     model: str = ""
     provider: str = ""

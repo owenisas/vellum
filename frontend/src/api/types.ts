@@ -52,6 +52,7 @@ export interface ChatResponse {
   text: string;
   raw_text: string;
   thinking: string;
+  raw_thinking: string;
   watermarked: boolean;
   model: string;
   provider: string;
