@@ -1,30 +1,38 @@
-import { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { type ReactNode, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
-import { useAuth } from "../auth/useAuth";
+import { Masthead } from "./Masthead";
+import { Footer } from "./Footer";
+import { Cursor } from "../components/ui/Cursor";
+import { SmoothScroll } from "../components/ui/SmoothScroll";
+
+const SURFACE_BY_ROUTE: Record<string, "ink" | "paper"> = {
+  "/": "ink",
+  "/studio": "paper",
+  "/ledger": "paper",
+  "/principles": "ink",
+};
+
+function surfaceFor(pathname: string): "ink" | "paper" {
+  for (const [prefix, surface] of Object.entries(SURFACE_BY_ROUTE)) {
+    if (prefix === "/" ? pathname === "/" : pathname.startsWith(prefix)) return surface;
+  }
+  return "ink";
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { isAuthenticated, login, logout, user } = useAuth();
+  const { pathname } = useLocation();
+  const surface = surfaceFor(pathname);
+  useEffect(() => {
+    document.documentElement.dataset.surface = surface;
+  }, [surface]);
   return (
     <>
-      <nav className="nav">
-        <Link to="/"><strong>Veritext</strong></Link>
-        <NavLink to="/demo" className="nav-cta">Live Demo</NavLink>
-        <NavLink to="/generate">Generate</NavLink>
-        <NavLink to="/verify">Verify</NavLink>
-        <NavLink to="/companies">Companies</NavLink>
-        <NavLink to="/chain">Chain</NavLink>
-        <NavLink to="/dashboard">Status</NavLink>
-        <NavLink to="/about">About</NavLink>
-        <span style={{ flex: 1 }} />
-        {isAuthenticated ? (
-          <>
-            <span style={{ color: "var(--color-muted)" }}>{user?.email}</span>
-            <button onClick={() => logout()}>Logout</button>
-          </>
-        ) : null /* hide login button entirely in demo mode */}
-      </nav>
-      <div className="shell">{children}</div>
+      <SmoothScroll />
+      <Cursor />
+      <Masthead />
+      <main data-page>{children}</main>
+      <Footer />
     </>
   );
 }

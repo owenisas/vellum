@@ -1,30 +1,37 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppShell } from "./layout/AppShell";
-import { Chain } from "./pages/Chain";
-import { Companies } from "./pages/Companies";
-import { Dashboard } from "./pages/Dashboard";
-import { DemoOverview } from "./pages/DemoOverview";
-import { GenerateAndAnchor } from "./pages/GenerateAndAnchor";
-import { GuidedDemo } from "./pages/GuidedDemo";
-import { Landing } from "./pages/Landing";
-import { Verify } from "./pages/Verify";
+import { Cover } from "./pages/Cover";
+import { Studio } from "./pages/Studio";
+import { Ledger } from "./pages/Ledger";
+import { Principles } from "./pages/Principles";
 
 export default function App() {
+  const location = useLocation();
   return (
     <ErrorBoundary>
       <AppShell>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/generate" element={<GenerateAndAnchor />} />
-          <Route path="/verify" element={<Verify />} />
-          <Route path="/companies" element={<Companies />} />
-          <Route path="/chain" element={<Chain />} />
-          <Route path="/demo" element={<GuidedDemo />} />
-          <Route path="/about" element={<DemoOverview />} />
-        </Routes>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<Cover />} />
+            <Route path="/studio" element={<Studio />} />
+            <Route path="/ledger" element={<Ledger />} />
+            <Route path="/principles" element={<Principles />} />
+
+            {/* Legacy redirects */}
+            <Route path="/demo" element={<Navigate replace to="/studio" />} />
+            <Route path="/generate" element={<Navigate replace to="/studio?stage=write" />} />
+            <Route path="/verify" element={<Navigate replace to="/studio?stage=prove" />} />
+            <Route path="/companies" element={<Navigate replace to="/ledger?tab=issuers" />} />
+            <Route path="/chain" element={<Navigate replace to="/ledger" />} />
+            <Route path="/dashboard" element={<Navigate replace to="/ledger" />} />
+            <Route path="/about" element={<Navigate replace to="/principles" />} />
+
+            <Route path="*" element={<Navigate replace to="/" />} />
+          </Routes>
+        </AnimatePresence>
       </AppShell>
     </ErrorBoundary>
   );

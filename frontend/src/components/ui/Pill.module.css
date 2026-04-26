@@ -1,0 +1,23 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong);
+  font-family: var(--font-sans);
+  font-size: var(--t-12);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg);
+  background: transparent;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.button { cursor: none; }
+@media (hover: none) { .button { cursor: pointer; } }
+.button:hover { border-color: var(--signal); color: var(--signal); }
+.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.signal { border-color: var(--signal); color: var(--signal); }
+.signal.active { background: var(--signal); color: var(--ink); }
+.alarm { border-color: var(--alarm); color: var(--alarm); }
+.alarm.active { background: var(--alarm); color: var(--accent); }

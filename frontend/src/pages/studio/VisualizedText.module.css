@@ -1,0 +1,29 @@
+.body {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  line-height: 1.6;
+  color: var(--fg);
+  white-space: pre-wrap;
+  letter-spacing: -0.005em;
+  font-variation-settings: "opsz" 14, "SOFT" 30;
+}
+.tag {
+  display: inline-block;
+  width: 0.18em;
+  height: 1.1em;
+  margin: 0 0.04em;
+  vertical-align: -0.18em;
+  position: relative;
+}
+.tagInner {
+  position: absolute;
+  inset: 0;
+  background: var(--signal);
+  opacity: 0.45;
+  border-radius: 1px;
+  animation: shimmer 2.6s var(--ease) infinite;
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.35; transform: scaleY(1); }
+  50% { opacity: 0.85; transform: scaleY(0.92); }
+}

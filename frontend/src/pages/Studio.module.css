@@ -1,0 +1,100 @@
+.shell {
+  padding-top: var(--s-6);
+  padding-bottom: var(--s-11);
+  position: relative;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-6);
+  padding: var(--s-4) 0 var(--s-5);
+  margin-bottom: var(--s-5);
+  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 64px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  z-index: 30;
+  flex-wrap: wrap;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+}
+.identityCap {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.identityName {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-21);
+  font-variation-settings: "opsz" 144;
+  color: var(--fg);
+}
+.identityAddr { color: var(--fg-mute); }
+.indicator {}
+
+.boot {
+  padding-top: var(--s-9);
+  padding-bottom: var(--s-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.bootTitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--t-49);
+  margin: var(--s-3) 0;
+  font-variation-settings: "opsz" 144;
+}
+.bootBody { color: var(--fg-mute); max-width: 50ch; }
+
+.footBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--hairline);
+  z-index: 40;
+}
+.footInner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: var(--s-3) var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.footLabel {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-right: var(--s-2);
+}
+.footLink {
+  font-family: var(--font-sans);
+  font-size: var(--t-12);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg);
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .top { position: static; flex-direction: column; align-items: flex-start; gap: var(--s-4); }
+  .identity { width: 100%; }
+}

@@ -21,6 +21,9 @@ extension/dist/
 *.tsbuildinfo
 .DS_Store
 
+# Frontend visual diff artifacts
+frontend/snaps/
+
 # Environment
 .env
 *.env.local

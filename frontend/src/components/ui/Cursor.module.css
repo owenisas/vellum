@@ -1,0 +1,34 @@
+.dot, .ring {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}
+.dot {
+  width: 6px; height: 6px;
+  margin: -3px 0 0 -3px;
+  background: var(--signal);
+  border-radius: 50%;
+  mix-blend-mode: difference;
+}
+.ring {
+  width: 36px; height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 1px solid var(--fg);
+  border-radius: 50%;
+  opacity: 0.5;
+  transition: width 240ms var(--ease), height 240ms var(--ease), margin 240ms var(--ease),
+    opacity 240ms var(--ease), border-color 240ms var(--ease);
+}
+.ring[data-hover="true"] {
+  width: 56px; height: 56px;
+  margin: -28px 0 0 -28px;
+  opacity: 0.85;
+  border-color: var(--signal);
+}
+.ring[data-down="true"] {
+  width: 30px; height: 30px;
+  margin: -15px 0 0 -15px;
+  opacity: 1;
+}

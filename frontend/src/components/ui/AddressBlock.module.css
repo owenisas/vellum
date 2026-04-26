@@ -1,0 +1,33 @@
+.btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  background: transparent;
+  border: 0;
+  padding: 0.15rem 0;
+  cursor: none;
+  transition: color var(--t-fast) var(--ease);
+}
+@media (hover: none) { .btn { cursor: pointer; } }
+.btn:hover { color: var(--signal); }
+.label {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.addr {
+  font-family: var(--font-mono);
+  font-size: var(--t-14);
+  color: var(--fg);
+}
+.copy {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--fg-mute);
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover .copy { opacity: 1; }
+.copied { opacity: 1 !important; color: var(--signal); }
