@@ -24,6 +24,8 @@ export function ProofBundleViewer({ bundle }: { bundle: ProofBundleV2 }) {
   const hints = bundle.verification_hints as Record<string, unknown>;
   const explorer = hints?.explorer_url as string | undefined;
   const chainType = hints?.chain_type as string | undefined;
+  const actorEmail = agentAction?.email ? String(agentAction.email) : "";
+  const actorModel = agentAction?.model ? String(agentAction.model) : "";
 
   return (
     <div>
@@ -52,16 +54,12 @@ export function ProofBundleViewer({ bundle }: { bundle: ProofBundleV2 }) {
             <dt>Auth0 actor</dt>
             <dd>
               <span className="mono">{String(agentAction.subject ?? "")}</span>
-              {agentAction.email && (
-                <span className="muted"> ({String(agentAction.email)})</span>
-              )}
+              {actorEmail && <span className="muted"> ({actorEmail})</span>}
             </dd>
             <dt>Agent action</dt>
             <dd>
               <Badge tone="success">{String(agentAction.action ?? "secured")}</Badge>
-              {agentAction.model && (
-                <span className="muted"> via {String(agentAction.model)}</span>
-              )}
+              {actorModel && <span className="muted"> via {actorModel}</span>}
             </dd>
           </>
         )}
