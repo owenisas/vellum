@@ -7,6 +7,7 @@ import logging
 from watermark import Watermarker
 
 from vellum.auth.ecdsa import hash_text
+from vellum.auth.jwt import Identity
 from vellum.chain.protocol import ChainBackend
 from vellum.db.repositories import ChainBlockRepository, CompanyRepository, ResponseRepository
 from vellum.models.chain import ChainReceiptModel
@@ -19,7 +20,7 @@ from vellum.models.registry import (
     VerifyResponse,
 )
 from vellum.services.proof_builder import ProofBundleBuilder
-from vellum.services.signing_service import SignatureMismatchError, SigningService
+from vellum.services.signing_service import SigningService
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,31 @@ class AnchorService:
         self.chain_repo = chain_repo
         self.proof_builder = proof_builder
 
-    async def anchor(self, req: AnchorRequest) -> AnchorResponse:
+    @staticmethod
+    def _agent_action(identity: Identity | None, metadata: dict | None) -> dict | None:
+        if identity is None:
+            return None
+
+        return {
+            "type": "auth0_secured_ai_action",
+            "action": "generate_watermark_sign_anchor",
+            "subject": identity.sub,
+            "email": identity.email,
+            "issuer_id_claim": identity.issuer_id,
+            "permissions": identity.permissions,
+            "auth_grant_type": identity.gty,
+            "provider": (metadata or {}).get("provider"),
+            "model": (metadata or {}).get("model"),
+        }
+
+    async def anchor(self, req: AnchorRequest, identity: Identity | None = None) -> AnchorResponse:
         data_hash = hash_text(req.text)
 
         company = await self.signing.verify(data_hash, req.signature_hex, req.issuer_id)
+        metadata = dict(req.metadata or {})
+        agent_action = self._agent_action(identity, metadata)
+        if agent_action is not None:
+            metadata["agent_action"] = agent_action
 
         await self.response_repo.save(
             sha256_hash=data_hash,
@@ -62,14 +84,14 @@ class AnchorService:
             signature_hex=req.signature_hex,
             raw_text=req.raw_text or req.text,
             watermarked_text=req.text,
-            metadata=req.metadata or {},
+            metadata=metadata,
         )
 
         receipt = await self.chain.anchor(
             data_hash=data_hash,
             issuer_id=req.issuer_id,
             signature_hex=req.signature_hex,
-            metadata=req.metadata or {},
+            metadata=metadata,
         )
 
         watermark_result = Watermarker().detect(req.text)
@@ -79,6 +101,7 @@ class AnchorService:
             company=company,
             watermark=watermark_result,
             signature_hex=req.signature_hex,
+            agent_action=agent_action,
         )
 
         return AnchorResponse(
@@ -104,7 +127,6 @@ class AnchorService:
 
         company = await self.company_repo.get_by_issuer(record.issuer_id) or {}
 
-        receipt = type(record).__name__  # placeholder for typing
         # Reconstruct a ChainReceipt-like object from the record for the proof builder
         from vellum.chain.protocol import ChainReceipt as _ChainReceipt
 
@@ -116,11 +138,14 @@ class AnchorService:
             timestamp=record.timestamp,
             solana_tx_signature=record.solana_tx_signature,
         )
+        agent_action = record.payload.get("agent_action")
+
         bundle = self.proof_builder.build(
             receipt=receipt_obj,
             company=company,
             watermark=Watermarker().detect(text),
             signature_hex=record.signature_hex,
+            agent_action=agent_action,
         )
 
         return VerifyResponse(
@@ -162,11 +187,14 @@ class AnchorService:
         from watermark import DetectResult
 
         empty = DetectResult(False, 0, 0, 0, [])
+        agent_action = record.payload.get("agent_action")
+
         bundle = self.proof_builder.build(
             receipt=receipt,
             company=company,
             watermark=empty,
             signature_hex=record.signature_hex,
+            agent_action=agent_action,
         )
         return ProofResponse(found=True, proof_bundle_v2=ProofBundleV2(**bundle))
 

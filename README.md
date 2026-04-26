@@ -54,6 +54,14 @@ make bootstrap-auth0  # full setup + Auth0 tenant
 All settings come from environment variables (see `.env.example`). Empty `AUTH0_DOMAIN` enables
 demo mode (no auth). `DEMO_MODE=fixture` swaps live LLM calls for deterministic responses.
 
+## DigitalOcean Deployment
+
+The repo includes a GitHub Actions workflow for DigitalOcean App Platform. It deploys the FastAPI
+backend under `/api` and the Vite frontend under `/`.
+
+See [`docs/digitalocean-deploy.md`](docs/digitalocean-deploy.md) for required GitHub secrets and
+variables.
+
 ## License
 
 MIT

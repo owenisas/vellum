@@ -17,6 +17,7 @@ export function ProofBundleViewer({ bundle }: { bundle: ProofBundleV2 }) {
   };
 
   const issuer = bundle.issuer as Record<string, unknown>;
+  const agentAction = bundle.agent_action as Record<string, unknown> | null | undefined;
   const sig = bundle.signature as Record<string, unknown>;
   const watermark = bundle.watermark as Record<string, unknown>;
   const anchor = (bundle.anchors?.[0] ?? {}) as Record<string, unknown>;
@@ -46,6 +47,24 @@ export function ProofBundleViewer({ bundle }: { bundle: ProofBundleV2 }) {
         </dd>
         <dt>Address</dt>
         <dd className="mono">{String(issuer?.eth_address ?? "")}</dd>
+        {agentAction && (
+          <>
+            <dt>Auth0 actor</dt>
+            <dd>
+              <span className="mono">{String(agentAction.subject ?? "")}</span>
+              {agentAction.email && (
+                <span className="muted"> ({String(agentAction.email)})</span>
+              )}
+            </dd>
+            <dt>Agent action</dt>
+            <dd>
+              <Badge tone="success">{String(agentAction.action ?? "secured")}</Badge>
+              {agentAction.model && (
+                <span className="muted"> via {String(agentAction.model)}</span>
+              )}
+            </dd>
+          </>
+        )}
         <dt>Signature</dt>
         <dd className="mono">{String(sig?.signature_hex ?? "")}</dd>
         <dt>Text hash</dt>

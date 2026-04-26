@@ -1,0 +1,96 @@
+name: vellum
+region: nyc
+
+services:
+  - name: api
+    github:
+      repo: __GITHUB_REPOSITORY__
+      branch: __DO_BRANCH__
+      deploy_on_push: true
+    source_dir: /
+    environment_slug: python
+    build_command: pip install .
+    run_command: uvicorn vellum.app:app --host 0.0.0.0 --port ${PORT:-8080}
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /api
+    health_check:
+      http_path: /api/health
+    envs:
+      - key: DEMO_MODE
+        scope: RUN_TIME
+        value: "__DEMO_MODE__"
+      - key: REGISTRY_ADMIN_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: "__REGISTRY_ADMIN_SECRET__"
+      - key: DB_PATH
+        scope: RUN_TIME
+        value: "/workspace/data/vellum.db"
+      - key: LOG_LEVEL
+        scope: RUN_TIME
+        value: "info"
+      - key: LOG_FORMAT
+        scope: RUN_TIME
+        value: "json"
+      - key: CHAIN_BACKEND
+        scope: RUN_TIME
+        value: "__CHAIN_BACKEND__"
+      - key: GOOGLE_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "__GOOGLE_API_KEY__"
+      - key: MINIMAX_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "__MINIMAX_API_KEY__"
+      - key: MINIMAX_BASE_URL
+        scope: RUN_TIME
+        value: "https://api.minimax.io/anthropic"
+      - key: DEFAULT_PROVIDER
+        scope: RUN_TIME
+        value: "__DEFAULT_PROVIDER__"
+      - key: DEFAULT_MODEL
+        scope: RUN_TIME
+        value: "__DEFAULT_MODEL__"
+      - key: AUTH0_DOMAIN
+        scope: RUN_TIME
+        value: "__AUTH0_DOMAIN__"
+      - key: AUTH0_AUDIENCE
+        scope: RUN_TIME
+        value: "__AUTH0_AUDIENCE__"
+      - key: AUTH0_ALGORITHMS
+        scope: RUN_TIME
+        value: "RS256"
+      - key: AUTH0_SPA_CLIENT_ID
+        scope: RUN_TIME
+        value: "__AUTH0_SPA_CLIENT_ID__"
+
+static_sites:
+  - name: web
+    github:
+      repo: __GITHUB_REPOSITORY__
+      branch: __DO_BRANCH__
+      deploy_on_push: true
+    source_dir: /frontend
+    build_command: npm install && npm run build
+    output_dir: dist
+    index_document: index.html
+    catchall_document: index.html
+    routes:
+      - path: /
+    envs:
+      - key: VITE_API_BASE_URL
+        scope: BUILD_TIME
+        value: ""
+      - key: VITE_AUTH0_DOMAIN
+        scope: BUILD_TIME
+        value: "__AUTH0_DOMAIN__"
+      - key: VITE_AUTH0_CLIENT_ID
+        scope: BUILD_TIME
+        value: "__AUTH0_SPA_CLIENT_ID__"
+      - key: VITE_AUTH0_AUDIENCE
+        scope: BUILD_TIME
+        value: "__AUTH0_AUDIENCE__"

@@ -19,7 +19,6 @@ from jose.utils import long_to_base64
 from vellum.auth.jwt import DEMO_IDENTITY, JWKSCache, decode_token
 from vellum.config.settings import AuthSettings
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ def _rsa_keypair():
         "q": _b64(private_numbers.q),
         "dp": _b64(private_numbers.dmp1),
         "dq": _b64(private_numbers.dmq1),
-        "qi": _b64(private_numbers.iqp),
+        "qi": _b64(private_numbers.iqmp),
     }
     public_jwk = {k: v for k, v in jwk.items() if k in {"kty", "kid", "use", "alg", "n", "e"}}
     return jwk, public_jwk, kid
@@ -167,7 +166,7 @@ async def test_bad_audience_raises_401(monkeypatch):
 
 
 async def test_missing_kid_raises_401(monkeypatch):
-    private_jwk, public_jwk, kid = _rsa_keypair()
+    private_jwk, public_jwk, _kid = _rsa_keypair()
     settings = _settings()
     _install_jwks(monkeypatch, public_jwk, settings)
 

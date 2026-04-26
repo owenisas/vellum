@@ -143,6 +143,7 @@ export interface ProofBundleV2 {
   bundle_id: string;
   hashing: Record<string, unknown>;
   issuer: Record<string, unknown>;
+  agent_action?: Record<string, unknown> | null;
   signature: Record<string, unknown>;
   watermark: Record<string, unknown>;
   anchors: Array<Record<string, unknown>>;

@@ -27,6 +27,7 @@ extension/dist/
 .env.local
 frontend/.env
 frontend/.env.local
+.do/app.generated.yaml
 
 # Database
 data/*.db

@@ -37,6 +37,7 @@ class ProofBundleV2(BaseModel):
     bundle_id: str
     hashing: dict[str, Any]
     issuer: dict[str, Any]
+    agent_action: dict[str, Any] | None = None
     signature: dict[str, Any]
     watermark: dict[str, Any]
     anchors: list[dict[str, Any]] = Field(default_factory=list)
@@ -87,6 +88,7 @@ class ProofSpecResponse(BaseModel):
         default_factory=lambda: [
             "hashing",
             "issuer",
+            "agent_action",
             "signature",
             "watermark",
             "anchors",

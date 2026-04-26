@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from vellum.auth.jwt import Identity
 from vellum.auth.permissions import Scope, require_permission
 from vellum.models import (
     AnchorRequest,
@@ -24,11 +25,14 @@ router = APIRouter(prefix="/api", tags=["registry"])
 @router.post(
     "/anchor",
     response_model=AnchorResponse,
-    dependencies=[Depends(require_permission(Scope.ANCHOR_CREATE))],
 )
-async def anchor(req: AnchorRequest, svc=Depends(get_anchor_service)) -> AnchorResponse:
+async def anchor(
+    req: AnchorRequest,
+    identity: Identity = Depends(require_permission(Scope.ANCHOR_CREATE)),
+    svc=Depends(get_anchor_service),
+) -> AnchorResponse:
     try:
-        return await svc.anchor(req)
+        return await svc.anchor(req, identity)
     except SignatureMismatchError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except PermissionError as exc:
