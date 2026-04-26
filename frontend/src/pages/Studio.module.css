@@ -1,3 +1,8 @@
+/* scrollIntoView targets these wrappers so stages clear the sticky header */
+.stageAnchor {
+  scroll-margin-top: 7.5rem;
+}
+
 .shell {
   padding-top: var(--s-6);
   padding-bottom: var(--s-11);

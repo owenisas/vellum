@@ -8,7 +8,7 @@ import { StageIndicator } from "../components/ui/StageIndicator";
 import { EditorialCaption } from "../components/ui/EditorialCaption";
 import { AddressBlock } from "../components/ui/AddressBlock";
 import { Button } from "../components/ui/Button";
-import { ease } from "../lib/motion";
+import { ease, prefersReducedMotion } from "../lib/motion";
 import { copy } from "../lib/hash";
 import { cn } from "../lib/cn";
 
@@ -49,10 +49,24 @@ export function Studio() {
   const setStage = (s: Stage) => {
     setStageState(s);
     setParams({ stage: s }, { replace: true });
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`stage-${s}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+    const id = `stage-${s}`;
+    const go = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior, block: "start" });
+        return true;
+      }
+      return false;
+    };
+    const schedule = () => {
+      if (go()) return;
+      requestAnimationFrame(() => {
+        if (go()) return;
+        window.setTimeout(() => { go(); }, 150);
+      });
+    };
+    requestAnimationFrame(schedule);
   };
 
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
@@ -165,10 +179,10 @@ export function Studio() {
         />
       </header>
 
-      <div id="stage-write"><StageWrite flow={flow} /></div>
-      {flow.generatedText && (<div id="stage-sign"><StageSign flow={flow} /></div>)}
-      {flow.signature && (<div id="stage-anchor"><StageAnchor flow={flow} /></div>)}
-      {flow.bundle && (<div id="stage-prove"><StageProve flow={flow} /></div>)}
+      <div id="stage-write" className={styles.stageAnchor}><StageWrite flow={flow} /></div>
+      {flow.generatedText && (<div id="stage-sign" className={styles.stageAnchor}><StageSign flow={flow} /></div>)}
+      {flow.signature && (<div id="stage-anchor" className={styles.stageAnchor}><StageAnchor flow={flow} /></div>)}
+      {flow.bundle && (<div id="stage-prove" className={styles.stageAnchor}><StageProve flow={flow} /></div>)}
 
       <AnimatePresence>
         {bundle && (

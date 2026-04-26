@@ -72,6 +72,8 @@ export function StageWrite({ flow }: { flow: StudioFlow }) {
       flow.setRawText(res.raw_text);
       const h = await sha256Hex(res.text);
       flow.setTextHash(h);
+      // Defer so #stage-sign mounts, then follow the demo to Sign (matches Gemini / Write flow)
+      window.setTimeout(() => flow.setStage("sign"), 220);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
