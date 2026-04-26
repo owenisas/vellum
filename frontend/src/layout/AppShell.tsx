@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
 
@@ -9,21 +9,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <nav className="nav">
         <Link to="/"><strong>Veritext</strong></Link>
-        <Link to="/dashboard">Dashboard</Link>
-        <Link to="/generate">Generate</Link>
-        <Link to="/verify">Verify</Link>
-        <Link to="/companies">Companies</Link>
-        <Link to="/chain">Chain</Link>
-        <Link to="/about">About</Link>
+        <NavLink to="/demo" className="nav-cta">Live Demo</NavLink>
+        <NavLink to="/generate">Generate</NavLink>
+        <NavLink to="/verify">Verify</NavLink>
+        <NavLink to="/companies">Companies</NavLink>
+        <NavLink to="/chain">Chain</NavLink>
+        <NavLink to="/dashboard">Status</NavLink>
+        <NavLink to="/about">About</NavLink>
         <span style={{ flex: 1 }} />
         {isAuthenticated ? (
           <>
             <span style={{ color: "var(--color-muted)" }}>{user?.email}</span>
             <button onClick={() => logout()}>Logout</button>
           </>
-        ) : (
-          <button onClick={() => login()}>Login</button>
-        )}
+        ) : null /* hide login button entirely in demo mode */}
       </nav>
       <div className="shell">{children}</div>
     </>

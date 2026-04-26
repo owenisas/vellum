@@ -28,6 +28,9 @@ async def create_company(
     if settings.auth0_enabled():
         if "company:create" not in claims.scopes:
             raise HTTPException(status_code=403, detail="missing scope company:create")
+    elif settings.demo_mode.value == "live":
+        # Demo mode: admin_secret optional. Public demos should not require a secret.
+        pass
     else:
         if body.admin_secret != settings.registry_admin_secret:
             raise HTTPException(status_code=403, detail="invalid admin_secret")

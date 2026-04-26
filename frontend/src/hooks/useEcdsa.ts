@@ -8,14 +8,14 @@ const VERITEXT_DOMAIN = {
   verifyingContract: "0x0000000000000000000000000000000000000000",
 } as const;
 
-const VERITEXT_TYPES = {
+const VERITEXT_TYPES: Record<string, ethers.TypedDataField[]> = {
   VeritextAnchor: [
     { name: "textHash", type: "bytes32" },
     { name: "issuerId", type: "uint256" },
     { name: "timestamp", type: "uint256" },
     { name: "bundleNonce", type: "bytes32" },
   ],
-} as const;
+};
 
 export interface AnchorMessage {
   textHash: string; // 0x... 32 bytes

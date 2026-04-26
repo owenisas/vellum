@@ -58,7 +58,12 @@ input, textarea {
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
-.nav a { color: var(--color-text); }
+.nav a { color: var(--color-text); padding: 0.25rem 0.5rem; border-radius: 4px; }
+.nav a:hover { background: rgba(255, 255, 255, 0.05); text-decoration: none; }
+.nav a.active { background: rgba(79, 70, 229, 0.15); color: var(--color-primary); }
+.nav-cta { background: var(--color-primary); color: #fff !important; font-weight: 600; }
+.nav-cta:hover { background: #4338ca !important; }
+.nav-cta.active { background: var(--color-primary) !important; color: #fff !important; }
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

@@ -2,14 +2,18 @@ import { useState } from "react";
 import { ethers } from "ethers";
 
 import { useCompanies, useCreateCompany, useRotateKey } from "../api/companies";
+import { useDemoMeta } from "../api/demo";
 
 export function Companies() {
   const { data, refetch } = useCompanies();
+  const { data: meta } = useDemoMeta();
   const create = useCreateCompany();
   const [name, setName] = useState("");
   const [issuerId, setIssuerId] = useState(1);
   const [adminSecret, setAdminSecret] = useState("");
   const [pkey, setPkey] = useState("");
+
+  const demoMode = meta?.demo_mode === "live";
 
   const handleCreate = async () => {
     const wallet = pkey ? new ethers.Wallet(pkey) : ethers.Wallet.createRandom();
@@ -18,7 +22,8 @@ export function Companies() {
       issuer_id: issuerId,
       eth_address: wallet.address,
       public_key_hex: wallet.address,
-      admin_secret: adminSecret,
+      // demo mode: server ignores admin_secret; field is optional
+      admin_secret: adminSecret || undefined,
     });
     refetch();
   };
@@ -26,11 +31,23 @@ export function Companies() {
   return (
     <div>
       <h2>Companies</h2>
+      {demoMode && (
+        <p style={{ color: "var(--color-muted)", fontSize: 13 }}>
+          Demo mode: registration does not require an admin secret. New issuers are limited to
+          the local server's database.
+        </p>
+      )}
       <div className="card">
         <h3>Register</h3>
         <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <input type="number" placeholder="Issuer ID" value={issuerId} onChange={(e) => setIssuerId(+e.target.value)} />
-        <input placeholder="Admin secret (demo mode)" value={adminSecret} onChange={(e) => setAdminSecret(e.target.value)} />
+        {!demoMode && (
+          <input
+            placeholder="Admin secret"
+            value={adminSecret}
+            onChange={(e) => setAdminSecret(e.target.value)}
+          />
+        )}
         <input placeholder="Private key (optional, generates if empty)" value={pkey} onChange={(e) => setPkey(e.target.value)} />
         <button onClick={handleCreate} disabled={create.isPending}>Register</button>
       </div>
