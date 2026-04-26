@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Veritext Proof Bundle v2",
+  "type": "object",
+  "required": ["spec", "bundle_id", "signed_fields", "hashing", "issuer", "signature", "watermark", "anchors", "verification_hints"],
+  "properties": {
+    "spec": { "const": "veritext-proof-bundle/v2" },
+    "bundle_id": { "type": "string", "pattern": "^vtb2_[0-9a-f]{64}$" },
+    "signed_fields": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of bundle field names that the signature commits to."
+    },
+    "hashing": {
+      "type": "object",
+      "required": ["algorithm", "text_hash", "input_encoding", "normalization"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "text_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "input_encoding": { "const": "utf-8" },
+        "normalization": { "const": "none" }
+      }
+    },
+    "issuer": {
+      "type": "object",
+      "required": ["issuer_id", "name", "eth_address", "public_key_hex", "current_key_id"],
+      "properties": {
+        "issuer_id": { "type": "integer", "minimum": 0, "maximum": 4095 },
+        "name": { "type": "string" },
+        "eth_address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+        "public_key_hex": { "type": "string" },
+        "current_key_id": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "key_history": { "type": "array" }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["scheme", "canonicalization", "signed_payload", "signature_hex"],
+      "properties": {
+        "scheme": { "enum": ["eip712", "eip191_personal_sign"] },
+        "canonicalization": { "const": "rfc8785" },
+        "signed_payload": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "signature_hex": { "type": "string" },
+        "recoverable_address": { "type": "boolean" },
+        "typed_data": { "type": ["object", "null"] }
+      }
+    },
+    "watermark": {
+      "type": "object",
+      "required": ["detected", "injection_mode", "tag_count", "valid_count", "invalid_count", "payloads"],
+      "properties": {
+        "detected": { "type": "boolean" },
+        "injection_mode": { "enum": ["whitespace", "grapheme"] },
+        "generation_time": {
+          "type": ["object", "null"],
+          "properties": {
+            "type": { "type": "string" },
+            "present": { "type": "boolean" },
+            "detector_score": { "type": "number" },
+            "p_value": { "type": "number" }
+          }
+        },
+        "tag_count": { "type": "integer", "minimum": 0 },
+        "valid_count": { "type": "integer", "minimum": 0 },
+        "invalid_count": { "type": "integer", "minimum": 0 },
+        "payloads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["schema_version", "issuer_id", "model_id", "model_version_id", "key_id", "fec", "raw_payload_hex"]
+          }
+        }
+      }
+    },
+    "encrypted_payload_metadata": {
+      "type": ["object", "null"],
+      "properties": {
+        "key_kid": { "type": "integer" },
+        "algorithm": { "const": "aes-128-ccm" }
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "timestamp"],
+        "properties": {
+          "type": { "enum": ["solana_per_response", "solana_merkle", "simulated_chain"] },
+          "tx_hash": { "type": ["string", "null"] },
+          "block_num": { "type": ["integer", "null"] },
+          "timestamp": { "type": "string" },
+          "memo_encoding": { "enum": ["borsh", "json"] },
+          "memo_borsh_hex": { "type": ["string", "null"] },
+          "merkle_root": { "type": ["string", "null"] },
+          "inclusion_proof": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["hash", "side"],
+              "properties": {
+                "hash": { "type": "string" },
+                "side": { "enum": ["L", "R"] }
+              }
+            }
+          },
+          "leaf_index": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "verification_hints": {
+      "type": "object",
+      "required": ["chain_type"],
+      "properties": {
+        "chain_type": { "type": "string" },
+        "rpc_url": { "type": ["string", "null"] },
+        "explorer_url": { "type": ["string", "null"] },
+        "merkle_root": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

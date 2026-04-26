@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  veritext:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5050:5050"
+    environment:
+      - DEMO_MODE=fixture
+      - CHAIN_BACKEND=simulated
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    volumes:
+      - ../data:/app/data
+
+  # Uncomment to run a local Solana test validator alongside.
+  # solana-test:
+  #   image: solanalabs/solana:edge
+  #   command: solana-test-validator --quiet
+  #   ports:
+  #     - "8899:8899"
+  #     - "8900:8900"

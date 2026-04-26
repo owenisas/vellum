@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+frontend/dist/
+extension/dist/
+*.tsbuildinfo
+.DS_Store
+
+# Environment
+.env
+*.env.local
+
+# Data / runtime
+data/*.db
+data/*.json
+!data/.gitkeep
+adversarial_report.json
+
+# IDE
+.idea/
+.vscode/

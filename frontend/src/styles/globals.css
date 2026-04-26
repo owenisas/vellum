@@ -1,0 +1,81 @@
+:root {
+  --color-bg: #0e1116;
+  --color-surface: #161b22;
+  --color-text: #e6edf3;
+  --color-muted: #7d8590;
+  --color-primary: #4f46e5;
+  --color-success: #2ea043;
+  --color-error: #da3633;
+  --color-border: #30363d;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --radius: 6px;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button {
+  background: var(--color-primary);
+  color: #fff;
+  border: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+input, textarea {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+.nav {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.nav a { color: var(--color-text); }
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge.ok { background: rgba(46, 160, 67, 0.2); color: var(--color-success); }
+.badge.warn { background: rgba(218, 54, 51, 0.2); color: var(--color-error); }
+.mono { font-family: var(--font-mono); font-size: 13px; }
+pre { background: var(--color-bg); padding: var(--spacing-md); border-radius: var(--radius); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border); }
